@@ -162,28 +162,78 @@ function renderTree(people, relationships) {
   relationships.forEach(r => { connectedIds.add(r.person_a); connectedIds.add(r.person_b); });
   const connected = people.filter(p => connectedIds.has(p.id));
 
-  // Find roots — people with no parents in the tree
-  const hasParents = new Set(Object.keys(childToParents));
-  const roots = connected.filter(p => !hasParents.has(p.id));
+  // Find Sherry as the root
+  const sherry = people.find(p => p.relation === 'Mother');
 
-  // Build node with ONE shared visited set — no duplicates
+  // Build from Sherry going DOWN only
+  // But also include her parents going UP as children of a virtual ancestor node
   const visited = new Set();
-  function buildNode(id) {
+
+  function buildDownward(id) {
     if (visited.has(id)) return null;
     visited.add(id);
     const person = personMap[id];
     if (!person) return null;
     const children = (parentToChildren[id] || [])
-      .map(cid => buildNode(cid))
+      .map(cid => buildDownward(cid))
       .filter(Boolean);
     return { id, data: person, children: children.length ? children : null };
   }
 
-  const rootNodes = roots.map(r => buildNode(r.id)).filter(Boolean);
+  // Build Sherry's parents as top level
+  const sherryParents = (childToParents[sherry.id] || [])
+    .map(pid => {
+      visited.add(pid);
+      const person = personMap[pid];
+      return person ? { id: pid, data: person, children: null } : null;
+    })
+    .filter(Boolean);
 
-  const hierarchyData = rootNodes.length === 1
-    ? rootNodes[0]
-    : { id: 'virtual', data: null, children: rootNodes };
+  // Now build Sherry downward
+  visited.add(sherry.id);
+  const sherryChildren = (parentToChildren[sherry.id] || [])
+    .map(cid => buildDownward(cid))
+    .filter(Boolean);
+
+  // Also add James Roy as a sibling node at Sherry's level
+  const jamesRoy = people.find(p => p.relation === 'Father');
+  let jamesRoyNode = null;
+  if (jamesRoy && !visited.has(jamesRoy.id)) {
+    visited.add(jamesRoy.id);
+    // James Roy's children that aren't already visited
+    const jrChildren = (parentToChildren[jamesRoy.id] || [])
+      .filter(cid => !visited.has(cid))
+      .map(cid => buildDownward(cid))
+      .filter(Boolean);
+    jamesRoyNode = { id: jamesRoy.id, data: jamesRoy, children: jrChildren.length ? jrChildren : null };
+  }
+
+  // Add any remaining unvisited connected people
+  connected.forEach(p => {
+    if (!visited.has(p.id)) {
+      visited.add(p.id);
+    }
+  });
+
+  // Build Sherry node with her children
+  const sherryNode = {
+    id: sherry.id,
+    data: sherry,
+    children: sherryChildren.length ? sherryChildren : null
+  };
+
+  // Top level: Sherry's parents + Sherry + James Roy as siblings under virtual root
+  const topLevelNodes = [
+    ...sherryParents,
+    sherryNode,
+    ...(jamesRoyNode ? [jamesRoyNode] : [])
+  ];
+
+  const hierarchyData = {
+    id: 'virtual',
+    data: null,
+    children: topLevelNodes
+  };
 
   const NODE_W = 170, NODE_H = 80, H_GAP = 40, V_GAP = 140;
 
