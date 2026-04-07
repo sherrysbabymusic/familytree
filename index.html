@@ -179,12 +179,7 @@ function renderTree(people, relationships) {
   const sherry = people.find(p => p.relation === 'Mother');
   if (!sherry) return;
 
-  // Find Sherry's parents (Dorothy and Richard) — build them as grandparent nodes
-  // with Sherry as their child in the hierarchy
-  const sherryParentIds = (childToParents[sherry.id] || []);
-  
-  // Mark Sherry's parents as visited so they don't appear elsewhere
-  sherryParentIds.forEach(pid => visited.add(pid));
+  // Mark everyone visited as we build
   visited.add(sherry.id);
 
   // Build Sherry's children downward
@@ -192,32 +187,13 @@ function renderTree(people, relationships) {
     .map(cid => buildDownward(cid))
     .filter(Boolean);
 
-  // Build Sherry node
   const sherryNode = {
     id: sherry.id,
     data: sherry,
     children: sherryChildren.length ? sherryChildren : null
   };
 
-  // Build grandparent nodes with Sherry as their child
-  // Use a virtual "grandparents" node to group Dorothy and Richard
-  const grandparentNodes = sherryParentIds.map(pid => {
-    const person = personMap[pid];
-    if (!person) return null;
-    return { id: pid, data: person, children: null };
-  }).filter(Boolean);
-
-  // Virtual grandparents node that holds Dorothy, Richard, and points to Sherry
-  const grandparentsVirtual = {
-    id: 'virtual-grandparents',
-    data: null,
-    children: [
-      ...grandparentNodes,
-      sherryNode
-    ]
-  };
-
-  // Find James Roy and build him separately
+  // Find James Roy
   const jamesRoy = people.find(p => p.relation === 'Father');
   let jamesRoyNode = null;
   if (jamesRoy && !visited.has(jamesRoy.id)) {
@@ -229,7 +205,36 @@ function renderTree(people, relationships) {
     jamesRoyNode = { id: jamesRoy.id, data: jamesRoy, children: jrChildren.length ? jrChildren : null };
   }
 
-  // Find Christine and any other unvisited connected people
+  // Build Dorothy and Richard as a virtual parent node above Sherry
+  const sherryParentIds = (childToParents[sherry.id] || []);
+  sherryParentIds.forEach(pid => visited.add(pid));
+
+  const grandparentNodes = sherryParentIds.map(pid => {
+    const person = personMap[pid];
+    return person ? { id: pid, data: person, children: null } : null;
+  }).filter(Boolean);
+
+  // Virtual node for Dorothy+Richard — their "child" in the hierarchy is Sherry
+  // This places Dorothy+Richard one level ABOVE Sherry
+  const dorothyRichardVirtual = {
+    id: 'virtual-grandparents',
+    data: null,
+    children: [
+      ...grandparentNodes,
+    ]
+  };
+
+  // Sherry level — Sherry + James Roy side by side
+  const sherryLevelVirtual = {
+    id: 'virtual-sherry-level',
+    data: null,
+    children: [
+      sherryNode,
+      ...(jamesRoyNode ? [jamesRoyNode] : [])
+    ]
+  };
+
+  // Find any remaining unvisited (Christine etc)
   const remainingNodes = connected
     .filter(p => !visited.has(p.id))
     .map(p => {
@@ -241,13 +246,23 @@ function renderTree(people, relationships) {
       return { id: p.id, data: p, children: children.length ? children : null };
     });
 
-  // Top level virtual root
+  // Final hierarchy:
+  // virtual-root
+  //   └── virtual-grandparents (Dorothy, Richard) — row 1
+  //         └── virtual-sherry-level (Sherry, James Roy) — row 2
+  //               └── Sherry's children — row 3
+  //               └── James Roy's children — row 3
+
+  dorothyRichardVirtual.children = [
+    ...grandparentNodes,
+    sherryLevelVirtual
+  ];
+
   const hierarchyData = {
     id: 'virtual-root',
     data: null,
     children: [
-      grandparentsVirtual,
-      ...(jamesRoyNode ? [jamesRoyNode] : []),
+      dorothyRichardVirtual,
       ...remainingNodes
     ]
   };
