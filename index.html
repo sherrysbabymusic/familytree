@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Family Tree</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
 <style>
   :root {
     --gold: #C9A84C;
@@ -20,6 +20,7 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: var(--black); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow: hidden; }
+
   body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events: none; z-index: 100; opacity: 0.4; }
 
   header { position: fixed; top: 0; left: 0; right: 0; z-index: 50; padding: 24px 40px 20px; background: linear-gradient(to bottom, rgba(0,0,0,0.95) 0%, transparent 100%); display: flex; align-items: center; justify-content: space-between; }
@@ -35,10 +36,7 @@
   .ctrl-btn { background: rgba(201,168,76,0.08); border: 1px solid var(--border); color: var(--gold); width: 36px; height: 36px; border-radius: 4px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
   .ctrl-btn:hover { background: var(--gold-dim); box-shadow: 0 0 12px var(--gold-glow); }
 
-  #tree-container { width: 100vw; height: 100vh; cursor: grab; }
-  #tree-container:active { cursor: grabbing; }
-  svg { width: 100%; height: 100%; }
-  .link { fill: none; stroke: rgba(201,168,76,0.5); stroke-width: 1.5; }
+  #cy { width: 100vw; height: 100vh; }
 
   .tooltip { position: fixed; background: #141414; border: 1px solid rgba(201,168,76,0.3); border-radius: 10px; padding: 16px 20px; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 200; max-width: 260px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
   .tooltip.visible { opacity: 1; }
@@ -95,20 +93,7 @@
   </div>
 </header>
 
-<div id="tree-container">
-  <svg id="tree-svg">
-    <defs>
-      <filter id="glow">
-        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-        <feMerge>
-          <feMergeNode in="coloredBlur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-    </defs>
-    <g id="tree-group"></g>
-  </svg>
-</div>
+<div id="cy"></div>
 
 <div class="tooltip" id="tooltip">
   <div class="tooltip-name" id="tt-name"></div>
@@ -121,7 +106,7 @@
     <div class="legend-item"><div class="legend-box you"></div><span>Root (Jamisha)</span></div>
     <div class="legend-item"><div class="legend-box"></div><span>Family Member</span></div>
   </div>
-  <div class="hint">Scroll to zoom · Drag to pan · Hover for details</div>
+  <div class="hint">Pinch to zoom · Drag to pan · Tap for details</div>
 </footer>
 
 <script>
@@ -145,7 +130,9 @@ async function fetchData() {
   return { people: await peopleRes.json(), relationships: await relsRes.json() };
 }
 
-function renderTree(people, relationships) {
+async function init() {
+  const { people, relationships } = await fetchData();
+
   const personMap = {};
   people.forEach(p => personMap[p.id] = p);
 
@@ -160,266 +147,143 @@ function renderTree(people, relationships) {
 
   const connectedIds = new Set();
   relationships.forEach(r => { connectedIds.add(r.person_a); connectedIds.add(r.person_b); });
-  const connected = people.filter(p => connectedIds.has(p.id));
 
-  const visited = new Set();
+  // Build Cytoscape nodes and edges
+  const nodes = people
+    .filter(p => connectedIds.has(p.id))
+    .map(p => ({
+      data: {
+        id: p.id,
+        label: p.name.length > 16 ? p.name.slice(0, 14) + '…' : p.name,
+        relation: p.relation,
+        fullData: p,
+        isYou: p.relation === 'You'
+      }
+    }));
 
-  function buildDownward(id) {
-    if (visited.has(id)) return null;
-    visited.add(id);
-    const person = personMap[id];
-    if (!person) return null;
-    const children = (parentToChildren[id] || [])
-      .map(cid => buildDownward(cid))
-      .filter(Boolean);
-    return { id, data: person, children: children.length ? children : null };
-  }
+  const edges = relationships.map(r => ({
+    data: {
+      id: `${r.person_a}-${r.person_b}`,
+      source: r.person_a,
+      target: r.person_b
+    }
+  }));
 
-  // Find Sherry
-  const sherry = people.find(p => p.relation === 'Mother');
-  if (!sherry) return;
-
-  // Mark everyone visited as we build
-  visited.add(sherry.id);
-
-  // Build Sherry's children downward
-  const sherryChildren = (parentToChildren[sherry.id] || [])
-    .map(cid => buildDownward(cid))
-    .filter(Boolean);
-
-  const sherryNode = {
-    id: sherry.id,
-    data: sherry,
-    children: sherryChildren.length ? sherryChildren : null
-  };
-
-  // Find James Roy
-  const jamesRoy = people.find(p => p.relation === 'Father');
-  let jamesRoyNode = null;
-  if (jamesRoy && !visited.has(jamesRoy.id)) {
-    visited.add(jamesRoy.id);
-    const jrChildren = (parentToChildren[jamesRoy.id] || [])
-      .filter(cid => !visited.has(cid))
-      .map(cid => buildDownward(cid))
-      .filter(Boolean);
-    jamesRoyNode = { id: jamesRoy.id, data: jamesRoy, children: jrChildren.length ? jrChildren : null };
-  }
-
-  // Build Dorothy and Richard as a virtual parent node above Sherry
-  const sherryParentIds = (childToParents[sherry.id] || []);
-  sherryParentIds.forEach(pid => visited.add(pid));
-
-  const grandparentNodes = sherryParentIds.map(pid => {
-    const person = personMap[pid];
-    return person ? { id: pid, data: person, children: null } : null;
-  }).filter(Boolean);
-
-  // Virtual node for Dorothy+Richard — their "child" in the hierarchy is Sherry
-  // This places Dorothy+Richard one level ABOVE Sherry
-  const dorothyRichardVirtual = {
-    id: 'virtual-grandparents',
-    data: null,
-    children: [
-      ...grandparentNodes,
-    ]
-  };
-
-  // Sherry level — Sherry + James Roy side by side
-  const sherryLevelVirtual = {
-    id: 'virtual-sherry-level',
-    data: null,
-    children: [
-      sherryNode,
-      ...(jamesRoyNode ? [jamesRoyNode] : [])
-    ]
-  };
-
-  // Find any remaining unvisited (Christine etc)
-  const remainingNodes = connected
-    .filter(p => !visited.has(p.id))
-    .map(p => {
-      visited.add(p.id);
-      const children = (parentToChildren[p.id] || [])
-        .filter(cid => !visited.has(cid))
-        .map(cid => buildDownward(cid))
-        .filter(Boolean);
-      return { id: p.id, data: p, children: children.length ? children : null };
-    });
-
-  // Final hierarchy:
-  // virtual-root
-  //   └── virtual-grandparents (Dorothy, Richard) — row 1
-  //         └── virtual-sherry-level (Sherry, James Roy) — row 2
-  //               └── Sherry's children — row 3
-  //               └── James Roy's children — row 3
-
-  dorothyRichardVirtual.children = [
-    ...grandparentNodes,
-    sherryLevelVirtual
-  ];
-
-  const hierarchyData = {
-    id: 'virtual-root',
-    data: null,
-    children: [
-      dorothyRichardVirtual,
-      ...remainingNodes
-    ]
-  };
-
-  const NODE_W = 170, NODE_H = 80, H_GAP = 40, V_GAP = 140;
-
-  const svg = d3.select('#tree-svg');
-  const g = d3.select('#tree-group');
-  g.selectAll('*').remove();
-
-  const zoom = d3.zoom().scaleExtent([0.1, 3]).on('zoom', e => g.attr('transform', e.transform));
-  svg.call(zoom);
-
-  const root = d3.hierarchy(hierarchyData);
-  const treeLayout = d3.tree()
-    .nodeSize([NODE_W + H_GAP, NODE_H + V_GAP])
-    .separation((a, b) => a.parent === b.parent ? 1 : 1.3);
-
-  treeLayout(root);
-
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  root.each(d => {
-    if (!d.data.data) return;
-    minX = Math.min(minX, d.x);
-    maxX = Math.max(maxX, d.x);
-    minY = Math.min(minY, d.y);
-    maxY = Math.max(maxY, d.y);
+  const cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements: { nodes, edges },
+    style: [
+      {
+        selector: 'node',
+        style: {
+          'background-color': '#111111',
+          'border-color': '#C9A84C',
+          'border-width': 1.5,
+          'width': 170,
+          'height': 80,
+          'shape': 'roundrectangle',
+          'label': 'data(label)',
+          'text-valign': 'center',
+          'text-halign': 'center',
+          'color': '#F0EDE8',
+          'font-family': 'Cormorant Garamond, serif',
+          'font-size': 14,
+          'font-weight': 600,
+          'text-wrap': 'wrap',
+          'text-max-width': 150,
+        }
+      },
+      {
+        selector: 'node[isYou]',
+        style: {
+          'border-width': 2.5,
+          'border-color': '#C9A84C',
+          'background-color': '#1a1400',
+          'overlay-color': '#C9A84C',
+          'shadow-blur': 20,
+          'shadow-color': '#C9A84C',
+          'shadow-opacity': 0.5,
+          'shadow-offset-x': 0,
+          'shadow-offset-y': 0,
+        }
+      },
+      {
+        selector: 'edge',
+        style: {
+          'width': 1.5,
+          'line-color': 'rgba(201,168,76,0.5)',
+          'target-arrow-shape': 'none',
+          'curve-style': 'taxi',
+          'taxi-direction': 'downward',
+          'taxi-turn': 50,
+        }
+      },
+      {
+        selector: 'node:selected',
+        style: {
+          'border-color': '#FFD700',
+          'border-width': 3,
+        }
+      }
+    ],
+    layout: {
+      name: 'dagre',
+      rankDir: 'TB',
+      nodeSep: 30,
+      rankSep: 140,
+      padding: 80,
+      animate: true,
+      animationDuration: 500,
+    },
+    userZoomingEnabled: true,
+    userPanningEnabled: true,
+    boxSelectionEnabled: false,
   });
 
-  const totalW = maxX - minX + NODE_W + 200;
-  const totalH = maxY - minY + NODE_H + 200;
-  const offsetX = -minX + 100;
-  const offsetY = -minY + 100;
-
-  const initX = (window.innerWidth - totalW) / 2;
-  const initY = (window.innerHeight - totalH) / 2;
-  svg.call(zoom.transform, d3.zoomIdentity.translate(initX, initY));
-
-  document.getElementById('zoom-in').onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 1.3);
-  document.getElementById('zoom-out').onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 0.77);
-  document.getElementById('reset-view').onclick = () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(initX, initY));
-
-  const linkGroup = g.append('g');
-  const nodeGroup = g.append('g');
+  // Tooltip
   const tooltip = document.getElementById('tooltip');
 
-  root.links().forEach(({ source, target }) => {
-    if (!source.data.data || !target.data.data) return;
-    const sx = source.x + offsetX;
-    const sy = source.y + offsetY + NODE_H;
-    const tx = target.x + offsetX;
-    const ty = target.y + offsetY;
-    const midY = (sy + ty) / 2;
-    linkGroup.append('path').attr('class', 'link')
-      .attr('d', `M${sx},${sy} C${sx},${midY} ${tx},${midY} ${tx},${ty}`);
+  cy.on('mouseover tap', 'node', function(evt) {
+    const member = evt.target.data('fullData');
+    const parents = (childToParents[member.id] || []).map(pid => personMap[pid]?.name).filter(Boolean);
+    const children = (parentToChildren[member.id] || []).map(cid => personMap[cid]?.name).filter(Boolean);
+
+    document.getElementById('tt-name').textContent = member.name;
+    document.getElementById('tt-relation').textContent = member.relation;
+
+    let detail = '';
+    if (parents.length) detail += `<span>Child of:</span> ${parents.join(', ')}<br>`;
+    if (children.length) detail += `<span>Parent of:</span> ${children.join(', ')}<br>`;
+    const bday = formatBirthday(member.birthday);
+    if (bday) detail += `<span>Birthday:</span> ${bday}<br>`;
+    if (member.added_by) detail += `<span>Added by:</span> ${member.added_by}<br>`;
+    if (member.discord_username) detail += `<span>Discord:</span> @${member.discord_username}`;
+
+    document.getElementById('tt-detail').innerHTML = detail || 'No additional info';
+    tooltip.classList.add('visible');
+
+    const pos = evt.target.renderedPosition();
+    tooltip.style.left = (pos.x + 100) + 'px';
+    tooltip.style.top = (pos.y - 40) + 'px';
   });
 
-  let nodeIndex = 0;
-  root.each(d => {
-    if (!d.data.data) return;
-    const member = d.data.data;
-    const isYou = member.relation === 'You';
-    const x = d.x + offsetX - NODE_W / 2;
-    const y = d.y + offsetY;
-    const i = nodeIndex++;
-
-    const nodeG = nodeGroup.append('g')
-      .attr('transform', `translate(${x}, ${y})`)
-      .style('cursor', 'pointer')
-      .style('opacity', 0);
-
-    nodeG.transition().delay(i * 25).duration(400).style('opacity', 1);
-
-    if (isYou) {
-      nodeG.append('rect')
-        .attr('x', -3).attr('y', -3)
-        .attr('width', NODE_W + 6).attr('height', NODE_H + 6)
-        .attr('rx', 13).attr('fill', 'none')
-        .attr('stroke', '#C9A84C').attr('stroke-width', 1).attr('opacity', 0.5);
-    }
-
-    nodeG.append('rect')
-      .attr('width', NODE_W).attr('height', NODE_H).attr('rx', 10)
-      .attr('fill', '#111111').attr('stroke', '#C9A84C')
-      .attr('stroke-width', isYou ? 2.5 : 1.5)
-      .attr('filter', isYou ? 'url(#glow)' : null);
-
-    const name = member.name.length > 18 ? member.name.slice(0, 16) + '…' : member.name;
-    nodeG.append('text')
-      .attr('x', NODE_W/2).attr('y', 22)
-      .attr('text-anchor', 'middle').attr('fill', '#F0EDE8')
-      .attr('font-family', 'Cormorant Garamond, serif')
-      .attr('font-size', '14px').attr('font-weight', '600')
-      .text(name);
-
-    nodeG.append('text')
-      .attr('x', NODE_W/2).attr('y', 38)
-      .attr('text-anchor', 'middle').attr('fill', '#C9A84C')
-      .attr('font-family', 'DM Sans, sans-serif').attr('font-size', '10px')
-      .text(member.relation);
-
-    if (member.added_by) {
-      nodeG.append('text')
-        .attr('x', NODE_W/2).attr('y', 52)
-        .attr('text-anchor', 'middle').attr('fill', 'rgba(201,168,76,0.4)')
-        .attr('font-family', 'DM Sans, sans-serif').attr('font-size', '9px')
-        .text(`Added by: ${member.added_by}`);
-    }
-
-    const showDiscord = member.discord_username && (
-      isYou || member.discord_username !== member.added_by
-    );
-    if (showDiscord) {
-      nodeG.append('text')
-        .attr('x', NODE_W/2).attr('y', 65)
-        .attr('text-anchor', 'middle').attr('fill', 'rgba(201,168,76,0.6)')
-        .attr('font-family', 'DM Sans, sans-serif').attr('font-size', '9px')
-        .text(`Discord: @${member.discord_username}`);
-    }
-
-    nodeG.on('mouseenter', function(event) {
-      const parents = (childToParents[member.id] || []).map(pid => personMap[pid]?.name).filter(Boolean);
-      const children = (parentToChildren[member.id] || []).map(cid => personMap[cid]?.name).filter(Boolean);
-      document.getElementById('tt-name').textContent = member.name;
-      document.getElementById('tt-relation').textContent = member.relation;
-      let detail = '';
-      if (parents.length) detail += `<span>Child of:</span> ${parents.join(', ')}<br>`;
-      if (children.length) detail += `<span>Parent of:</span> ${children.join(', ')}<br>`;
-      const bday = formatBirthday(member.birthday);
-      if (bday) detail += `<span>Birthday:</span> ${bday}<br>`;
-      if (member.added_by) detail += `<span>Added by:</span> ${member.added_by}<br>`;
-      if (member.discord_username) detail += `<span>Discord:</span> @${member.discord_username}`;
-      document.getElementById('tt-detail').innerHTML = detail || 'No additional info';
-      tooltip.classList.add('visible');
-    })
-    .on('mousemove', function(event) {
-      tooltip.style.left = (event.clientX + 16) + 'px';
-      tooltip.style.top = (event.clientY - 10) + 'px';
-    })
-    .on('mouseleave', function() { tooltip.classList.remove('visible'); });
+  cy.on('mouseout', 'node', function() {
+    tooltip.classList.remove('visible');
   });
 
-  document.getElementById('member-count').textContent = `${connected.length} Members`;
+  // Controls
+  document.getElementById('zoom-in').onclick = () => cy.zoom({ level: cy.zoom() * 1.3, renderedPosition: { x: window.innerWidth/2, y: window.innerHeight/2 } });
+  document.getElementById('zoom-out').onclick = () => cy.zoom({ level: cy.zoom() * 0.77, renderedPosition: { x: window.innerWidth/2, y: window.innerHeight/2 } });
+  document.getElementById('reset-view').onclick = () => cy.fit(undefined, 80);
+
+  document.getElementById('member-count').textContent = `${nodes.length} Members`;
+  setTimeout(() => document.getElementById('loading').classList.add('hidden'), 800);
 }
 
-async function init() {
-  try {
-    const { people, relationships } = await fetchData();
-    renderTree(people, relationships);
-    setTimeout(() => document.getElementById('loading').classList.add('hidden'), 800);
-  } catch (err) {
-    console.error(err);
-    document.querySelector('.loading p').textContent = 'Failed to load. Check your connection.';
-  }
-}
-
-init();
+init().catch(err => {
+  console.error(err);
+  document.querySelector('.loading p').textContent = 'Failed to load. Check your connection.';
+});
 </script>
 </body>
 </html>
