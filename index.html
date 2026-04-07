@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Family Tree</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
 <style>
   :root {
@@ -20,7 +22,6 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: var(--black); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow: hidden; }
-
   body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events: none; z-index: 100; opacity: 0.4; }
 
   header { position: fixed; top: 0; left: 0; right: 0; z-index: 50; padding: 24px 40px 20px; background: linear-gradient(to bottom, rgba(0,0,0,0.95) 0%, transparent 100%); display: flex; align-items: center; justify-content: space-between; }
@@ -36,7 +37,7 @@
   .ctrl-btn { background: rgba(201,168,76,0.08); border: 1px solid var(--border); color: var(--gold); width: 36px; height: 36px; border-radius: 4px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
   .ctrl-btn:hover { background: var(--gold-dim); box-shadow: 0 0 12px var(--gold-glow); }
 
-  #cy { width: 100vw; height: 100vh; }
+  #cy { width: 100vw; height: 100vh; background: #000; }
 
   .tooltip { position: fixed; background: #141414; border: 1px solid rgba(201,168,76,0.3); border-radius: 10px; padding: 16px 20px; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 200; max-width: 260px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
   .tooltip.visible { opacity: 1; }
@@ -131,159 +132,153 @@ async function fetchData() {
 }
 
 async function init() {
-  const { people, relationships } = await fetchData();
+  try {
+    const { people, relationships } = await fetchData();
 
-  const personMap = {};
-  people.forEach(p => personMap[p.id] = p);
+    const personMap = {};
+    people.forEach(p => personMap[p.id] = p);
 
-  const childToParents = {};
-  const parentToChildren = {};
-  relationships.forEach(r => {
-    if (!childToParents[r.person_b]) childToParents[r.person_b] = [];
-    childToParents[r.person_b].push(r.person_a);
-    if (!parentToChildren[r.person_a]) parentToChildren[r.person_a] = [];
-    parentToChildren[r.person_a].push(r.person_b);
-  });
+    const childToParents = {};
+    const parentToChildren = {};
+    relationships.forEach(r => {
+      if (!childToParents[r.person_b]) childToParents[r.person_b] = [];
+      childToParents[r.person_b].push(r.person_a);
+      if (!parentToChildren[r.person_a]) parentToChildren[r.person_a] = [];
+      parentToChildren[r.person_a].push(r.person_b);
+    });
 
-  const connectedIds = new Set();
-  relationships.forEach(r => { connectedIds.add(r.person_a); connectedIds.add(r.person_b); });
+    const connectedIds = new Set();
+    relationships.forEach(r => { connectedIds.add(r.person_a); connectedIds.add(r.person_b); });
 
-  // Build Cytoscape nodes and edges
-  const nodes = people
-    .filter(p => connectedIds.has(p.id))
-    .map(p => ({
+    const nodes = people
+      .filter(p => connectedIds.has(p.id))
+      .map(p => ({
+        data: {
+          id: p.id,
+          label: p.name.length > 16 ? p.name.slice(0, 14) + '…' : p.name,
+          relation: p.relation,
+          fullData: p,
+          isYou: p.relation === 'You' ? true : undefined
+        }
+      }));
+
+    const edges = relationships.map(r => ({
       data: {
-        id: p.id,
-        label: p.name.length > 16 ? p.name.slice(0, 14) + '…' : p.name,
-        relation: p.relation,
-        fullData: p,
-        isYou: p.relation === 'You'
+        id: `${r.person_a}-${r.person_b}`,
+        source: r.person_a,
+        target: r.person_b
       }
     }));
 
-  const edges = relationships.map(r => ({
-    data: {
-      id: `${r.person_a}-${r.person_b}`,
-      source: r.person_a,
-      target: r.person_b
-    }
-  }));
+    // Register dagre layout
+    cytoscapeDagre(cytoscape);
 
-  const cy = cytoscape({
-    container: document.getElementById('cy'),
-    elements: { nodes, edges },
-    style: [
-      {
-        selector: 'node',
-        style: {
-          'background-color': '#111111',
-          'border-color': '#C9A84C',
-          'border-width': 1.5,
-          'width': 170,
-          'height': 80,
-          'shape': 'roundrectangle',
-          'label': 'data(label)',
-          'text-valign': 'center',
-          'text-halign': 'center',
-          'color': '#F0EDE8',
-          'font-family': 'Cormorant Garamond, serif',
-          'font-size': 14,
-          'font-weight': 600,
-          'text-wrap': 'wrap',
-          'text-max-width': 150,
+    const cy = cytoscape({
+      container: document.getElementById('cy'),
+      elements: { nodes, edges },
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'background-color': '#111111',
+            'border-color': '#C9A84C',
+            'border-width': 1.5,
+            'width': 170,
+            'height': 80,
+            'shape': 'roundrectangle',
+            'label': 'data(label)',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'color': '#F0EDE8',
+            'font-family': 'Cormorant Garamond, serif',
+            'font-size': 14,
+            'font-weight': 600,
+            'text-wrap': 'wrap',
+            'text-max-width': 150,
+          }
+        },
+        {
+          selector: 'node[isYou]',
+          style: {
+            'border-width': 2.5,
+            'background-color': '#1a1400',
+            'shadow-blur': 20,
+            'shadow-color': '#C9A84C',
+            'shadow-opacity': 0.6,
+            'shadow-offset-x': 0,
+            'shadow-offset-y': 0,
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 1.5,
+            'line-color': 'rgba(201,168,76,0.5)',
+            'target-arrow-shape': 'none',
+            'curve-style': 'taxi',
+            'taxi-direction': 'downward',
+            'taxi-turn': 50,
+          }
         }
+      ],
+      layout: {
+        name: 'dagre',
+        rankDir: 'TB',
+        nodeSep: 30,
+        rankSep: 140,
+        padding: 100,
+        animate: true,
+        animationDuration: 600,
       },
-      {
-        selector: 'node[isYou]',
-        style: {
-          'border-width': 2.5,
-          'border-color': '#C9A84C',
-          'background-color': '#1a1400',
-          'overlay-color': '#C9A84C',
-          'shadow-blur': 20,
-          'shadow-color': '#C9A84C',
-          'shadow-opacity': 0.5,
-          'shadow-offset-x': 0,
-          'shadow-offset-y': 0,
-        }
-      },
-      {
-        selector: 'edge',
-        style: {
-          'width': 1.5,
-          'line-color': 'rgba(201,168,76,0.5)',
-          'target-arrow-shape': 'none',
-          'curve-style': 'taxi',
-          'taxi-direction': 'downward',
-          'taxi-turn': 50,
-        }
-      },
-      {
-        selector: 'node:selected',
-        style: {
-          'border-color': '#FFD700',
-          'border-width': 3,
-        }
-      }
-    ],
-    layout: {
-      name: 'dagre',
-      rankDir: 'TB',
-      nodeSep: 30,
-      rankSep: 140,
-      padding: 80,
-      animate: true,
-      animationDuration: 500,
-    },
-    userZoomingEnabled: true,
-    userPanningEnabled: true,
-    boxSelectionEnabled: false,
-  });
+      userZoomingEnabled: true,
+      userPanningEnabled: true,
+      boxSelectionEnabled: false,
+    });
 
-  // Tooltip
-  const tooltip = document.getElementById('tooltip');
+    const tooltip = document.getElementById('tooltip');
 
-  cy.on('mouseover tap', 'node', function(evt) {
-    const member = evt.target.data('fullData');
-    const parents = (childToParents[member.id] || []).map(pid => personMap[pid]?.name).filter(Boolean);
-    const children = (parentToChildren[member.id] || []).map(cid => personMap[cid]?.name).filter(Boolean);
+    cy.on('mouseover', 'node', function(evt) {
+      const member = evt.target.data('fullData');
+      const parents = (childToParents[member.id] || []).map(pid => personMap[pid]?.name).filter(Boolean);
+      const children = (parentToChildren[member.id] || []).map(cid => personMap[cid]?.name).filter(Boolean);
 
-    document.getElementById('tt-name').textContent = member.name;
-    document.getElementById('tt-relation').textContent = member.relation;
+      document.getElementById('tt-name').textContent = member.name;
+      document.getElementById('tt-relation').textContent = member.relation;
 
-    let detail = '';
-    if (parents.length) detail += `<span>Child of:</span> ${parents.join(', ')}<br>`;
-    if (children.length) detail += `<span>Parent of:</span> ${children.join(', ')}<br>`;
-    const bday = formatBirthday(member.birthday);
-    if (bday) detail += `<span>Birthday:</span> ${bday}<br>`;
-    if (member.added_by) detail += `<span>Added by:</span> ${member.added_by}<br>`;
-    if (member.discord_username) detail += `<span>Discord:</span> @${member.discord_username}`;
+      let detail = '';
+      if (parents.length) detail += `<span>Child of:</span> ${parents.join(', ')}<br>`;
+      if (children.length) detail += `<span>Parent of:</span> ${children.join(', ')}<br>`;
+      const bday = formatBirthday(member.birthday);
+      if (bday) detail += `<span>Birthday:</span> ${bday}<br>`;
+      if (member.added_by) detail += `<span>Added by:</span> ${member.added_by}<br>`;
+      if (member.discord_username) detail += `<span>Discord:</span> @${member.discord_username}`;
 
-    document.getElementById('tt-detail').innerHTML = detail || 'No additional info';
-    tooltip.classList.add('visible');
+      document.getElementById('tt-detail').innerHTML = detail || 'No additional info';
+      tooltip.classList.add('visible');
 
-    const pos = evt.target.renderedPosition();
-    tooltip.style.left = (pos.x + 100) + 'px';
-    tooltip.style.top = (pos.y - 40) + 'px';
-  });
+      const pos = evt.target.renderedPosition();
+      tooltip.style.left = (pos.x + 100) + 'px';
+      tooltip.style.top = (pos.y - 40) + 'px';
+    });
 
-  cy.on('mouseout', 'node', function() {
-    tooltip.classList.remove('visible');
-  });
+    cy.on('mouseout', 'node', function() {
+      tooltip.classList.remove('visible');
+    });
 
-  // Controls
-  document.getElementById('zoom-in').onclick = () => cy.zoom({ level: cy.zoom() * 1.3, renderedPosition: { x: window.innerWidth/2, y: window.innerHeight/2 } });
-  document.getElementById('zoom-out').onclick = () => cy.zoom({ level: cy.zoom() * 0.77, renderedPosition: { x: window.innerWidth/2, y: window.innerHeight/2 } });
-  document.getElementById('reset-view').onclick = () => cy.fit(undefined, 80);
+    document.getElementById('zoom-in').onclick = () => cy.zoom({ level: cy.zoom() * 1.3, renderedPosition: { x: window.innerWidth/2, y: window.innerHeight/2 } });
+    document.getElementById('zoom-out').onclick = () => cy.zoom({ level: cy.zoom() * 0.77, renderedPosition: { x: window.innerWidth/2, y: window.innerHeight/2 } });
+    document.getElementById('reset-view').onclick = () => cy.fit(undefined, 80);
 
-  document.getElementById('member-count').textContent = `${nodes.length} Members`;
-  setTimeout(() => document.getElementById('loading').classList.add('hidden'), 800);
+    document.getElementById('member-count').textContent = `${nodes.length} Members`;
+    setTimeout(() => document.getElementById('loading').classList.add('hidden'), 800);
+
+  } catch(err) {
+    console.error(err);
+    document.querySelector('.loading p').textContent = 'Failed to load. Check your connection.';
+  }
 }
 
-init().catch(err => {
-  console.error(err);
-  document.querySelector('.loading p').textContent = 'Failed to load. Check your connection.';
-});
+init();
 </script>
 </body>
 </html>
