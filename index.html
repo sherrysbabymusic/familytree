@@ -169,18 +169,19 @@ function renderTree(people, relationships) {
 
   const connectedIds = new Set();
   relationships.forEach(r => { connectedIds.add(r.person_a); connectedIds.add(r.person_b); });
-  const connected = people.filter(p => connectedIds.has(p.id));
 
-  // Assign rows based on relation label — simple and reliable
+  // Use all people with a relation row assignment
+  const visiblePeople = people.filter(p => connectedIds.has(p.id) && RELATION_TO_ROW[p.relation] !== undefined);
+
   const rows = {};
-  connected.forEach(p => {
-    const row = RELATION_TO_ROW[p.relation] ?? 3;
+  visiblePeople.forEach(p => {
+    const row = RELATION_TO_ROW[p.relation];
     if (!rows[row]) rows[row] = [];
     rows[row].push(p);
   });
 
   const NODE_W = 170, NODE_H = 80, H_GAP = 30, V_GAP = 130;
-  const usedRows = Object.keys(rows).map(Number).sort((a,b) => a - b);
+  const usedRows = Object.keys(rows).map(Number).sort((a,b) => a-b);
   const maxInRow = Math.max(...usedRows.map(r => rows[r].length));
   const totalW = Math.max(1200, maxInRow * (NODE_W + H_GAP) + 200);
   const totalH = usedRows.length * (NODE_H + V_GAP) + 160;
@@ -200,11 +201,9 @@ function renderTree(people, relationships) {
   document.getElementById('zoom-out').onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 0.77);
   document.getElementById('reset-view').onclick = () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(centerX, centerY));
 
-  // Calculate positions
   const positions = {};
   usedRows.forEach((rowNum, ri) => {
-    const members = rows[rowNum];
-    // Sort so Jamisha is first in her row
+    const members = [...rows[rowNum]];
     members.sort((a, b) => {
       if (a.relation === 'You') return -1;
       if (b.relation === 'You') return 1;
@@ -220,7 +219,6 @@ function renderTree(people, relationships) {
 
   const linkGroup = g.append('g');
 
-  // Draw lines grouped by exact parent set
   const familyUnits = {};
   Object.entries(childToParents).forEach(([childId, parentIds]) => {
     if (!positions[childId]) return;
@@ -278,11 +276,10 @@ function renderTree(people, relationships) {
     }
   });
 
-  // Draw nodes
   const nodeGroup = g.append('g');
   const tooltip = document.getElementById('tooltip');
 
-  connected.forEach((member, i) => {
+  visiblePeople.forEach((member, i) => {
     const pos = positions[member.id];
     if (!pos) return;
 
@@ -347,10 +344,8 @@ function renderTree(people, relationships) {
     nodeG.on('mouseenter', function(event) {
       const parents = (childToParents[member.id] || []).map(pid => personMap[pid]?.name).filter(Boolean);
       const children = (parentToChildren[member.id] || []).map(cid => personMap[cid]?.name).filter(Boolean);
-
       document.getElementById('tt-name').textContent = member.name;
       document.getElementById('tt-relation').textContent = member.relation;
-
       let detail = '';
       if (parents.length) detail += `<span>Child of:</span> ${parents.join(', ')}<br>`;
       if (children.length) detail += `<span>Parent of:</span> ${children.join(', ')}<br>`;
@@ -358,7 +353,6 @@ function renderTree(people, relationships) {
       if (bday) detail += `<span>Birthday:</span> ${bday}<br>`;
       if (member.added_by) detail += `<span>Added by:</span> ${member.added_by}<br>`;
       if (member.discord_username) detail += `<span>Discord:</span> @${member.discord_username}`;
-
       document.getElementById('tt-detail').innerHTML = detail || 'No additional info';
       tooltip.classList.add('visible');
     })
@@ -369,7 +363,7 @@ function renderTree(people, relationships) {
     .on('mouseleave', function() { tooltip.classList.remove('visible'); });
   });
 
-  document.getElementById('member-count').textContent = `${connected.length} Members`;
+  document.getElementById('member-count').textContent = `${visiblePeople.length} Members`;
 }
 
 async function init() {
