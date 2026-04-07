@@ -432,12 +432,14 @@ function renderTree(people, relationships) {
 
   const linkGroup = g.append('g').attr('class', 'links');
 
+  // KEY FIX: Group children by their EXACT parent set
+  // Only children that share ALL the same parents go in the same bracket
   const familyUnits = {};
   Object.entries(childToParents).forEach(([childId, parentIds]) => {
     if (!positions[childId]) return;
-    const validParents = parentIds.filter(pid => positions[pid]);
+    const validParents = parentIds.filter(pid => positions[pid]).sort();
     if (!validParents.length) return;
-    const key = validParents.sort().join('|');
+    const key = validParents.join('|');
     if (!familyUnits[key]) familyUnits[key] = { parents: validParents, children: [] };
     familyUnits[key].children.push(childId);
   });
@@ -446,29 +448,41 @@ function renderTree(people, relationships) {
     const validChildren = children.filter(cid => positions[cid]);
     if (!validChildren.length) return;
 
+    // Verify ALL children share ALL parents
+    // A child only belongs in this bracket if its parent list exactly matches
+    const bracketChildren = validChildren.filter(cid => {
+      const cParents = (childToParents[cid] || []).filter(pid => positions[pid]).sort();
+      return cParents.join('|') === parents.join('|');
+    });
+
+    if (!bracketChildren.length) return;
+
     const parentXs = parents.map(pid => positions[pid].x);
     const parentY = Math.max(...parents.map(pid => positions[pid].y)) + NODE_H;
-    const childXs = validChildren.map(cid => positions[cid].x);
-    const childY = Math.min(...validChildren.map(cid => positions[cid].y));
+    const childXs = bracketChildren.map(cid => positions[cid].x);
+    const childY = Math.min(...bracketChildren.map(cid => positions[cid].y));
     const midY = (parentY + childY) / 2;
     const parentCenterX = (Math.min(...parentXs) + Math.max(...parentXs)) / 2;
 
+    // Parent horizontal connector
     if (parents.length > 1) {
       linkGroup.append('line').attr('class', 'link')
         .attr('x1', Math.min(...parentXs)).attr('y1', parentY + 10)
         .attr('x2', Math.max(...parentXs)).attr('y2', parentY + 10);
     }
 
+    // Line down from parents
     linkGroup.append('line').attr('class', 'link')
       .attr('x1', parentCenterX)
       .attr('y1', parents.length > 1 ? parentY + 10 : parentY)
       .attr('x2', parentCenterX).attr('y2', midY);
 
-    if (validChildren.length > 1) {
+    // Child bracket
+    if (bracketChildren.length > 1) {
       linkGroup.append('line').attr('class', 'link')
         .attr('x1', Math.min(...childXs)).attr('y1', midY)
         .attr('x2', Math.max(...childXs)).attr('y2', midY);
-      validChildren.forEach(cid => {
+      bracketChildren.forEach(cid => {
         linkGroup.append('line').attr('class', 'link')
           .attr('x1', positions[cid].x).attr('y1', midY)
           .attr('x2', positions[cid].x).attr('y2', childY);
@@ -532,7 +546,8 @@ function renderTree(people, relationships) {
       .attr('font-size', '10px')
       .text(member.relation);
 
-    if (member.discord_username) {
+    // Only show discord username if they linked their OWN account
+    if (member.discord_username && member.discord_id) {
       nodeG.append('text')
         .attr('x', NODE_W / 2).attr('y', 60)
         .attr('text-anchor', 'middle')
@@ -556,7 +571,9 @@ function renderTree(people, relationships) {
         const bday = new Date(member.birthday);
         detail += `<span>Birthday:</span> ${bday.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}<br>`;
       }
-      if (member.discord_username) detail += `<span>Discord:</span> @${member.discord_username}`;
+      if (member.discord_username && member.discord_id) {
+        detail += `<span>Discord:</span> @${member.discord_username}`;
+      }
 
       document.getElementById('tt-detail').innerHTML = detail || 'No additional info';
       tooltip.classList.add('visible');
