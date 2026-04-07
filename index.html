@@ -136,15 +136,6 @@ function formatBirthday(dateStr) {
   return `${MONTHS[parseInt(parts[1],10)-1]} ${parseInt(parts[2],10)}`;
 }
 
-const RELATION_TO_ROW = {
-  'Great-Grandparent': 0,
-  'Grandparent': 1,
-  'Mother': 2, 'Father': 2, 'Step-Mother': 2, 'Step-Father': 2, 'Aunt': 2, 'Uncle': 2,
-  'You': 3, 'Sibling': 3, 'Cousin': 3, 'Spouse/Partner': 3, 'Co-Parent': 3, 'In-Law': 3,
-  'Son': 4, 'Daughter': 4, 'Niece': 4, 'Nephew': 4,
-  'Grandchild': 5,
-};
-
 async function fetchData() {
   const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` };
   const [peopleRes, relsRes] = await Promise.all([
@@ -169,22 +160,33 @@ function renderTree(people, relationships) {
 
   const connectedIds = new Set();
   relationships.forEach(r => { connectedIds.add(r.person_a); connectedIds.add(r.person_b); });
+  const connected = people.filter(p => connectedIds.has(p.id));
 
-  // Use all people with a relation row assignment
-  const visiblePeople = people.filter(p => connectedIds.has(p.id) && RELATION_TO_ROW[p.relation] !== undefined);
+  // Find roots — people with no parents in the tree
+  const hasParents = new Set(Object.keys(childToParents));
+  const roots = connected.filter(p => !hasParents.has(p.id));
 
-  const rows = {};
-  visiblePeople.forEach(p => {
-    const row = RELATION_TO_ROW[p.relation];
-    if (!rows[row]) rows[row] = [];
-    rows[row].push(p);
-  });
+  // Build node recursively
+  function buildNode(id, visited = new Set()) {
+    if (visited.has(id)) return null;
+    visited.add(id);
+    const person = personMap[id];
+    if (!person) return null;
+    const children = (parentToChildren[id] || [])
+      .map(cid => buildNode(cid, new Set(visited)))
+      .filter(Boolean);
+    return { id, data: person, children: children.length ? children : null };
+  }
 
-  const NODE_W = 170, NODE_H = 80, H_GAP = 30, V_GAP = 130;
-  const usedRows = Object.keys(rows).map(Number).sort((a,b) => a-b);
-  const maxInRow = Math.max(...usedRows.map(r => rows[r].length));
-  const totalW = Math.max(1200, maxInRow * (NODE_W + H_GAP) + 200);
-  const totalH = usedRows.length * (NODE_H + V_GAP) + 160;
+  // Build all root nodes
+  const rootNodes = roots.map(r => buildNode(r.id)).filter(Boolean);
+
+  // Wrap in virtual root if multiple
+  const hierarchyData = rootNodes.length === 1
+    ? rootNodes[0]
+    : { id: 'virtual', data: null, children: rootNodes };
+
+  const NODE_W = 170, NODE_H = 80, H_GAP = 40, V_GAP = 140;
 
   const svg = d3.select('#tree-svg');
   const g = d3.select('#tree-group');
@@ -193,99 +195,61 @@ function renderTree(people, relationships) {
   const zoom = d3.zoom().scaleExtent([0.1, 3]).on('zoom', e => g.attr('transform', e.transform));
   svg.call(zoom);
 
-  const centerX = (window.innerWidth - totalW) / 2;
-  const centerY = (window.innerHeight - totalH) / 2;
-  svg.call(zoom.transform, d3.zoomIdentity.translate(centerX, centerY));
+  const root = d3.hierarchy(hierarchyData);
+  const treeLayout = d3.tree()
+    .nodeSize([NODE_W + H_GAP, NODE_H + V_GAP])
+    .separation((a, b) => a.parent === b.parent ? 1 : 1.3);
+
+  treeLayout(root);
+
+  // Get bounds excluding virtual root
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  root.each(d => {
+    if (!d.data.data) return;
+    minX = Math.min(minX, d.x);
+    maxX = Math.max(maxX, d.x);
+    minY = Math.min(minY, d.y);
+    maxY = Math.max(maxY, d.y);
+  });
+
+  const totalW = maxX - minX + NODE_W + 200;
+  const totalH = maxY - minY + NODE_H + 200;
+  const offsetX = -minX + 100;
+  const offsetY = -minY + 100;
+
+  const initX = (window.innerWidth - totalW) / 2;
+  const initY = (window.innerHeight - totalH) / 2;
+  svg.call(zoom.transform, d3.zoomIdentity.translate(initX, initY));
 
   document.getElementById('zoom-in').onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 1.3);
   document.getElementById('zoom-out').onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 0.77);
-  document.getElementById('reset-view').onclick = () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(centerX, centerY));
-
-  const positions = {};
-  usedRows.forEach((rowNum, ri) => {
-    const members = [...rows[rowNum]];
-    members.sort((a, b) => {
-      if (a.relation === 'You') return -1;
-      if (b.relation === 'You') return 1;
-      return 0;
-    });
-    const rowTotalW = members.length * NODE_W + (members.length - 1) * H_GAP;
-    const startX = (totalW - rowTotalW) / 2;
-    const y = 80 + ri * (NODE_H + V_GAP);
-    members.forEach((member, mi) => {
-      positions[member.id] = { x: startX + mi * (NODE_W + H_GAP) + NODE_W/2, y };
-    });
-  });
+  document.getElementById('reset-view').onclick = () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(initX, initY));
 
   const linkGroup = g.append('g');
-
-  const familyUnits = {};
-  Object.entries(childToParents).forEach(([childId, parentIds]) => {
-    if (!positions[childId]) return;
-    const validParents = parentIds.filter(pid => positions[pid]).sort();
-    if (!validParents.length) return;
-    const key = validParents.join('|');
-    if (!familyUnits[key]) familyUnits[key] = { parents: validParents, children: [] };
-    familyUnits[key].children.push(childId);
-  });
-
-  Object.values(familyUnits).forEach(({ parents, children }) => {
-    const bracketChildren = children.filter(cid => {
-      if (!positions[cid]) return false;
-      const cParents = (childToParents[cid] || []).filter(pid => positions[pid]).sort();
-      return cParents.join('|') === parents.join('|');
-    });
-    if (!bracketChildren.length) return;
-
-    const parentXs = parents.map(pid => positions[pid].x);
-    const parentY = Math.max(...parents.map(pid => positions[pid].y)) + NODE_H;
-    const childXs = bracketChildren.map(cid => positions[cid].x);
-    const childY = Math.min(...bracketChildren.map(cid => positions[cid].y));
-    const midY = (parentY + childY) / 2;
-    const parentCenterX = parentXs.length === 1
-      ? parentXs[0]
-      : (Math.min(...parentXs) + Math.max(...parentXs)) / 2;
-
-    if (parents.length > 1) {
-      linkGroup.append('line').attr('class', 'link')
-        .attr('x1', Math.min(...parentXs)).attr('y1', parentY + 10)
-        .attr('x2', Math.max(...parentXs)).attr('y2', parentY + 10);
-    }
-
-    linkGroup.append('line').attr('class', 'link')
-      .attr('x1', parentCenterX)
-      .attr('y1', parents.length > 1 ? parentY + 10 : parentY)
-      .attr('x2', parentCenterX).attr('y2', midY);
-
-    if (bracketChildren.length > 1) {
-      linkGroup.append('line').attr('class', 'link')
-        .attr('x1', Math.min(...childXs)).attr('y1', midY)
-        .attr('x2', Math.max(...childXs)).attr('y2', midY);
-      bracketChildren.forEach(cid => {
-        linkGroup.append('line').attr('class', 'link')
-          .attr('x1', positions[cid].x).attr('y1', midY)
-          .attr('x2', positions[cid].x).attr('y2', childY);
-      });
-    } else {
-      linkGroup.append('line').attr('class', 'link')
-        .attr('x1', parentCenterX).attr('y1', midY)
-        .attr('x2', childXs[0]).attr('y2', midY);
-      linkGroup.append('line').attr('class', 'link')
-        .attr('x1', childXs[0]).attr('y1', midY)
-        .attr('x2', childXs[0]).attr('y2', childY);
-    }
-  });
-
   const nodeGroup = g.append('g');
   const tooltip = document.getElementById('tooltip');
 
-  visiblePeople.forEach((member, i) => {
-    const pos = positions[member.id];
-    if (!pos) return;
+  // Draw links — skip virtual root links
+  root.links().forEach(({ source, target }) => {
+    if (!source.data.data || !target.data.data) return;
+    const sx = source.x + offsetX;
+    const sy = source.y + offsetY + NODE_H;
+    const tx = target.x + offsetX;
+    const ty = target.y + offsetY;
+    const midY = (sy + ty) / 2;
+    linkGroup.append('path').attr('class', 'link')
+      .attr('d', `M${sx},${sy} C${sx},${midY} ${tx},${midY} ${tx},${ty}`);
+  });
 
+  // Draw nodes — skip virtual root
+  let nodeIndex = 0;
+  root.each(d => {
+    if (!d.data.data) return;
+    const member = d.data.data;
     const isYou = member.relation === 'You';
-    const x = pos.x - NODE_W / 2;
-    const y = pos.y;
+    const x = d.x + offsetX - NODE_W / 2;
+    const y = d.y + offsetY;
+    const i = nodeIndex++;
 
     const nodeG = nodeGroup.append('g')
       .attr('transform', `translate(${x}, ${y})`)
@@ -363,7 +327,7 @@ function renderTree(people, relationships) {
     .on('mouseleave', function() { tooltip.classList.remove('visible'); });
   });
 
-  document.getElementById('member-count').textContent = `${visiblePeople.length} Members`;
+  document.getElementById('member-count').textContent = `${connected.length} Members`;
 }
 
 async function init() {
