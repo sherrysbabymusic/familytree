@@ -136,6 +136,15 @@ function formatBirthday(dateStr) {
   return `${MONTHS[parseInt(parts[1],10)-1]} ${parseInt(parts[2],10)}`;
 }
 
+const RELATION_TO_ROW = {
+  'Great-Grandparent': 0,
+  'Grandparent': 1,
+  'Mother': 2, 'Father': 2, 'Step-Mother': 2, 'Step-Father': 2, 'Aunt': 2, 'Uncle': 2,
+  'You': 3, 'Sibling': 3, 'Cousin': 3, 'Spouse/Partner': 3, 'Co-Parent': 3, 'In-Law': 3,
+  'Son': 4, 'Daughter': 4, 'Niece': 4, 'Nephew': 4,
+  'Grandchild': 5,
+};
+
 async function fetchData() {
   const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` };
   const [peopleRes, relsRes] = await Promise.all([
@@ -149,7 +158,6 @@ function renderTree(people, relationships) {
   const personMap = {};
   people.forEach(p => personMap[p.id] = p);
 
-  // Build bidirectional maps
   const childToParents = {};
   const parentToChildren = {};
   relationships.forEach(r => {
@@ -159,86 +167,24 @@ function renderTree(people, relationships) {
     parentToChildren[r.person_a].push(r.person_b);
   });
 
-  // Find Jamisha
-  const jamisha = people.find(p => p.relation === 'You');
-  if (!jamisha) return;
-
-  // Build positions manually using generation rows
-  // Find all ancestors of Jamisha going UP
-  const positions = {};
-  const NODE_W = 170, NODE_H = 80, H_GAP = 30, V_GAP = 130;
-
-  // Assign generation levels relative to Jamisha (0 = Jamisha, -1 = parents, -2 = grandparents, 1 = children, etc)
-  const levels = {};
-  const visited = new Set();
-
-  function assignLevels(id, level) {
-    if (visited.has(id)) return;
-    visited.add(id);
-    levels[id] = level;
-    // Go up to parents
-    (childToParents[id] || []).forEach(pid => assignLevels(pid, level - 1));
-    // Go down to children
-    (parentToChildren[id] || []).forEach(cid => assignLevels(cid, level + 1));
-  }
-
-  assignLevels(jamisha.id, 0);
-
-  // Also add siblings and their families — find everyone connected
-  // Get all connected people
   const connectedIds = new Set();
   relationships.forEach(r => { connectedIds.add(r.person_a); connectedIds.add(r.person_b); });
+  const connected = people.filter(p => connectedIds.has(p.id));
 
-  // Anyone not yet assigned a level — add them based on their relation label
-  const RELATION_TO_LEVEL = {
-    'Great-Grandparent': -3,
-    'Grandparent': -2,
-    'Mother': -1, 'Father': -1, 'Step-Mother': -1, 'Step-Father': -1, 'Aunt': -1, 'Uncle': -1,
-    'You': 0, 'Sibling': 0, 'Cousin': 0, 'Spouse/Partner': 0, 'Co-Parent': 0, 'In-Law': 0,
-    'Son': 1, 'Daughter': 1, 'Niece': 1, 'Nephew': 1,
-    'Grandchild': 2,
-  };
-
-  connectedIds.forEach(id => {
-    if (!levels[id] && levels[id] !== 0) {
-      const person = personMap[id];
-      if (person) levels[id] = RELATION_TO_LEVEL[person.relation] ?? 0;
-    }
+  // Assign rows based on relation label — simple and reliable
+  const rows = {};
+  connected.forEach(p => {
+    const row = RELATION_TO_ROW[p.relation] ?? 3;
+    if (!rows[row]) rows[row] = [];
+    rows[row].push(p);
   });
 
-  // Group by level
-  const levelGroups = {};
-  connectedIds.forEach(id => {
-    const lvl = levels[id] ?? 0;
-    if (!levelGroups[lvl]) levelGroups[lvl] = [];
-    levelGroups[lvl].push(id);
-  });
-
-  const usedLevels = Object.keys(levelGroups).map(Number).sort((a,b) => a - b);
-  const maxInRow = Math.max(...usedLevels.map(l => levelGroups[l].length));
+  const NODE_W = 170, NODE_H = 80, H_GAP = 30, V_GAP = 130;
+  const usedRows = Object.keys(rows).map(Number).sort((a,b) => a - b);
+  const maxInRow = Math.max(...usedRows.map(r => rows[r].length));
   const totalW = Math.max(1200, maxInRow * (NODE_W + H_GAP) + 200);
-  const levelToRow = {};
-  usedLevels.forEach((lvl, ri) => levelToRow[lvl] = ri);
+  const totalH = usedRows.length * (NODE_H + V_GAP) + 160;
 
-  usedLevels.forEach((lvl, ri) => {
-    const members = levelGroups[lvl];
-    // Sort so Jamisha is first in her row
-    members.sort((a, b) => {
-      if (a === jamisha.id) return -1;
-      if (b === jamisha.id) return 1;
-      return 0;
-    });
-    const rowTotalW = members.length * NODE_W + (members.length - 1) * H_GAP;
-    const startX = (totalW - rowTotalW) / 2;
-    const y = ri * (NODE_H + V_GAP) + 80;
-    members.forEach((id, mi) => {
-      positions[id] = { x: startX + mi * (NODE_W + H_GAP) + NODE_W/2, y };
-    });
-  });
-
-  const totalH = usedLevels.length * (NODE_H + V_GAP) + 160;
-
-  // Render
   const svg = d3.select('#tree-svg');
   const g = d3.select('#tree-group');
   g.selectAll('*').remove();
@@ -254,9 +200,27 @@ function renderTree(people, relationships) {
   document.getElementById('zoom-out').onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 0.77);
   document.getElementById('reset-view').onclick = () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(centerX, centerY));
 
+  // Calculate positions
+  const positions = {};
+  usedRows.forEach((rowNum, ri) => {
+    const members = rows[rowNum];
+    // Sort so Jamisha is first in her row
+    members.sort((a, b) => {
+      if (a.relation === 'You') return -1;
+      if (b.relation === 'You') return 1;
+      return 0;
+    });
+    const rowTotalW = members.length * NODE_W + (members.length - 1) * H_GAP;
+    const startX = (totalW - rowTotalW) / 2;
+    const y = 80 + ri * (NODE_H + V_GAP);
+    members.forEach((member, mi) => {
+      positions[member.id] = { x: startX + mi * (NODE_W + H_GAP) + NODE_W/2, y };
+    });
+  });
+
   const linkGroup = g.append('g');
 
-  // Draw lines — group by exact parent set
+  // Draw lines grouped by exact parent set
   const familyUnits = {};
   Object.entries(childToParents).forEach(([childId, parentIds]) => {
     if (!positions[childId]) return;
@@ -318,10 +282,9 @@ function renderTree(people, relationships) {
   const nodeGroup = g.append('g');
   const tooltip = document.getElementById('tooltip');
 
-  connectedIds.forEach((id, i) => {
-    const member = personMap[id];
-    const pos = positions[id];
-    if (!member || !pos) return;
+  connected.forEach((member, i) => {
+    const pos = positions[member.id];
+    if (!pos) return;
 
     const isYou = member.relation === 'You';
     const x = pos.x - NODE_W / 2;
@@ -406,7 +369,7 @@ function renderTree(people, relationships) {
     .on('mouseleave', function() { tooltip.classList.remove('visible'); });
   });
 
-  document.getElementById('member-count').textContent = `${connectedIds.size} Members`;
+  document.getElementById('member-count').textContent = `${connected.length} Members`;
 }
 
 async function init() {
