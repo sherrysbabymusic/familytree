@@ -11,10 +11,7 @@
     --gold: #C9A84C;
     --gold-dim: rgba(201,168,76,0.15);
     --gold-glow: rgba(201,168,76,0.35);
-    --gold-line: rgba(201,168,76,0.5);
     --black: #000000;
-    --surface: #0D0D0D;
-    --surface2: #141414;
     --card: #111111;
     --text: #F0EDE8;
     --text-dim: rgba(240,237,232,0.5);
@@ -22,241 +19,51 @@
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--black); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events: none; z-index: 100; opacity: 0.4; }
 
-  body {
-    background: var(--black);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    min-height: 100vh;
-    overflow: hidden;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 100;
-    opacity: 0.4;
-  }
-
-  header {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    z-index: 50;
-    padding: 24px 40px 20px;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.95) 0%, transparent 100%);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-  }
-
-  .ornament {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .orn-line {
-    width: 40px; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--gold));
-  }
+  header { position: fixed; top: 0; left: 0; right: 0; z-index: 50; padding: 24px 40px 20px; background: linear-gradient(to bottom, rgba(0,0,0,0.95) 0%, transparent 100%); display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 20px; }
+  .ornament { display: flex; align-items: center; gap: 10px; }
+  .orn-line { width: 40px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
   .orn-line.r { background: linear-gradient(90deg, var(--gold), transparent); }
-  .orn-diamond {
-    width: 6px; height: 6px;
-    background: var(--gold);
-    transform: rotate(45deg);
-  }
-
-  h1 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 28px;
-    font-weight: 600;
-    color: var(--text);
-    letter-spacing: 1px;
-  }
+  .orn-diamond { width: 6px; height: 6px; background: var(--gold); transform: rotate(45deg); }
+  h1 { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 600; color: var(--text); letter-spacing: 1px; }
   h1 em { color: var(--gold); font-style: italic; }
+  .member-count { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); border: 1px solid var(--border); padding: 4px 12px; border-radius: 2px; }
+  .controls { display: flex; gap: 8px; }
+  .ctrl-btn { background: rgba(201,168,76,0.08); border: 1px solid var(--border); color: var(--gold); width: 36px; height: 36px; border-radius: 4px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .ctrl-btn:hover { background: var(--gold-dim); box-shadow: 0 0 12px var(--gold-glow); }
 
-  .member-count {
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    border: 1px solid var(--border);
-    padding: 4px 12px;
-    border-radius: 2px;
-  }
-
-  .controls {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .ctrl-btn {
-    background: rgba(201,168,76,0.08);
-    border: 1px solid var(--border);
-    color: var(--gold);
-    width: 36px; height: 36px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.2s;
-  }
-  .ctrl-btn:hover {
-    background: var(--gold-dim);
-    box-shadow: 0 0 12px var(--gold-glow);
-  }
-
-  #tree-container {
-    width: 100vw;
-    height: 100vh;
-    cursor: grab;
-  }
+  #tree-container { width: 100vw; height: 100vh; cursor: grab; }
   #tree-container:active { cursor: grabbing; }
-
   svg { width: 100%; height: 100%; }
+  .link { fill: none; stroke: rgba(201,168,76,0.5); stroke-width: 1.5; }
 
-  .link {
-    fill: none;
-    stroke: rgba(201,168,76,0.5);
-    stroke-width: 1.5;
-  }
-
-  .tooltip {
-    position: fixed;
-    background: #141414;
-    border: 1px solid rgba(201,168,76,0.3);
-    border-radius: 10px;
-    padding: 16px 20px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.2s;
-    z-index: 200;
-    max-width: 240px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 20px rgba(201,168,76,0.35);
-  }
+  .tooltip { position: fixed; background: #141414; border: 1px solid rgba(201,168,76,0.3); border-radius: 10px; padding: 16px 20px; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 200; max-width: 260px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
   .tooltip.visible { opacity: 1; }
-  .tooltip-name {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 4px;
-  }
-  .tooltip-relation {
-    font-size: 11px;
-    color: var(--gold);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-  .tooltip-detail {
-    font-size: 12px;
-    color: var(--text-dim);
-    line-height: 1.6;
-  }
+  .tooltip-name { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .tooltip-relation { font-size: 11px; color: var(--gold); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  .tooltip-detail { font-size: 12px; color: var(--text-dim); line-height: 1.8; }
   .tooltip-detail span { color: var(--text); }
 
-  .loading {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: var(--black);
-    z-index: 300;
-    transition: opacity 0.5s;
-  }
+  .loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--black); z-index: 300; transition: opacity 0.5s; }
   .loading.hidden { opacity: 0; pointer-events: none; }
-
-  .loading-ornament {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-  .loading-line {
-    width: 80px; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--gold));
-    animation: loadLine 1.5s ease-in-out infinite;
-  }
-  .loading-line.r {
-    background: linear-gradient(90deg, var(--gold), transparent);
-    animation-delay: 0.75s;
-  }
-  @keyframes loadLine {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 1; }
-  }
-
-  .loading h2 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 32px;
-    font-weight: 300;
-    color: var(--text);
-    letter-spacing: 3px;
-    margin-bottom: 8px;
-  }
+  .loading-ornament { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .loading-line { width: 80px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); animation: loadLine 1.5s ease-in-out infinite; }
+  .loading-line.r { background: linear-gradient(90deg, var(--gold), transparent); animation-delay: 0.75s; }
+  @keyframes loadLine { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+  .loading h2 { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 300; color: var(--text); letter-spacing: 3px; margin-bottom: 8px; }
   .loading h2 em { color: var(--gold); font-style: italic; }
-  .loading p {
-    font-size: 12px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 1; }
-  }
+  .loading p { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
-  footer {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    padding: 16px 40px;
-    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    z-index: 50;
-  }
-  .legend {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.5px;
-  }
-  .legend-box {
-    width: 14px; height: 14px;
-    border-radius: 3px;
-    border: 1.5px solid var(--gold);
-    background: #111111;
-  }
-  .legend-box.you {
-    border-width: 2.5px;
-    box-shadow: 0 0 8px rgba(201,168,76,0.35);
-  }
-  .hint {
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.5px;
-  }
+  footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 16px 40px; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%); display: flex; align-items: center; justify-content: space-between; z-index: 50; }
+  .legend { display: flex; align-items: center; gap: 20px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim); }
+  .legend-box { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid var(--gold); background: #111111; }
+  .legend-box.you { border-width: 2.5px; box-shadow: 0 0 8px rgba(201,168,76,0.35); }
+  .hint { font-size: 11px; color: var(--text-dim); }
 </style>
 </head>
 <body>
@@ -311,14 +118,8 @@
 
 <footer>
   <div class="legend">
-    <div class="legend-item">
-      <div class="legend-box you"></div>
-      <span>Root (Jamisha)</span>
-    </div>
-    <div class="legend-item">
-      <div class="legend-box"></div>
-      <span>Family Member</span>
-    </div>
+    <div class="legend-item"><div class="legend-box you"></div><span>Root (Jamisha)</span></div>
+    <div class="legend-item"><div class="legend-box"></div><span>Family Member</span></div>
   </div>
   <div class="hint">Scroll to zoom · Drag to pan · Hover for details</div>
 </footer>
@@ -327,32 +128,24 @@
 const SUPABASE_URL = 'https://wlifcojugqocdxfkwoae.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndsaWZjb2p1Z3FvY2R4Zmt3b2FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MDU4NTYsImV4cCI6MjA5MTA4MTg1Nn0.TKcJPTEFFcBM4lZgKMd8H4Ejy9F7wTmPdYMkYofMMCQ';
 
-const RELATION_TO_ROW = {
-  'Great-Grandparent': 0,
-  'Grandparent': 1,
-  'Mother': 2, 'Father': 2, 'Step-Mother': 2, 'Step-Father': 2,
-  'Aunt': 2, 'Uncle': 2,
-  'You': 3, 'Sibling': 3, 'Cousin': 3,
-  'Spouse/Partner': 3, 'Co-Parent': 3, 'In-Law': 3,
-  'Son': 4, 'Daughter': 4, 'Niece': 4, 'Nephew': 4,
-  'Grandchild': 5,
-};
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function formatBirthday(dateStr) {
+  if (!dateStr || dateStr.startsWith('1900')) return null;
+  const parts = dateStr.split('-');
+  return `${MONTHS[parseInt(parts[1],10)-1]} ${parseInt(parts[2],10)}`;
+}
 
 async function fetchData() {
-  const headers = {
-    'apikey': SUPABASE_ANON_KEY,
-    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-  };
+  const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` };
   const [peopleRes, relsRes] = await Promise.all([
     fetch(`${SUPABASE_URL}/rest/v1/people?select=*`, { headers }),
     fetch(`${SUPABASE_URL}/rest/v1/relationships?select=*`, { headers })
   ]);
-  const people = await peopleRes.json();
-  const relationships = await relsRes.json();
-  return { people, relationships };
+  return { people: await peopleRes.json(), relationships: await relsRes.json() };
 }
 
-function renderTree(people, relationships) {
+function buildD3Tree(people, relationships) {
   const personMap = {};
   people.forEach(p => personMap[p.id] = p);
 
@@ -365,196 +158,193 @@ function renderTree(people, relationships) {
     parentToChildren[r.person_a].push(r.person_b);
   });
 
+  // Find Jamisha as root
+  const root = people.find(p => p.relation === 'You');
+  if (!root) return null;
+
+  // Build hierarchy from Jamisha down first, then add ancestors
+  // Create a virtual root that contains everyone
   const connectedIds = new Set();
-  relationships.forEach(r => {
-    connectedIds.add(r.person_a);
-    connectedIds.add(r.person_b);
-  });
+  relationships.forEach(r => { connectedIds.add(r.person_a); connectedIds.add(r.person_b); });
 
-  const connected = people.filter(p => connectedIds.has(p.id));
+  // Find true roots (no parents in tree)
+  const hasParents = new Set(Object.keys(childToParents));
+  const roots = [...connectedIds].filter(id => !hasParents.has(id));
 
-  const rows = {};
-  connected.forEach(p => {
-    const row = RELATION_TO_ROW[p.relation] ?? 3;
-    if (!rows[row]) rows[row] = [];
-    rows[row].push(p);
-  });
+  // If multiple roots, create virtual root
+  let hierarchyData;
+  if (roots.length === 1) {
+    hierarchyData = buildNode(roots[0], personMap, parentToChildren, new Set());
+  } else {
+    hierarchyData = {
+      id: 'virtual-root',
+      name: '',
+      virtual: true,
+      children: roots.map(rid => buildNode(rid, personMap, parentToChildren, new Set()))
+    };
+  }
 
-  const NODE_W = 170;
-  const NODE_H = 70;
-  const H_GAP = 30;
-  const V_GAP = 120;
-  const PADDING = 100;
+  return { hierarchyData, personMap, childToParents, parentToChildren };
+}
 
-  const usedRows = Object.keys(rows).map(Number).sort((a,b) => a - b);
-  const maxInRow = Math.max(...usedRows.map(r => rows[r].length));
+function buildNode(id, personMap, parentToChildren, visited) {
+  if (visited.has(id)) return null;
+  visited.add(id);
+  const person = personMap[id];
+  if (!person) return null;
 
-  const totalW = Math.max(1200, maxInRow * (NODE_W + H_GAP) + PADDING * 2);
-  const totalH = usedRows.length * (NODE_H + V_GAP) + PADDING * 2;
+  const children = (parentToChildren[id] || [])
+    .map(cid => buildNode(cid, personMap, parentToChildren, new Set([...visited])))
+    .filter(Boolean);
+
+  return {
+    id,
+    name: person.name,
+    data: person,
+    children: children.length ? children : null
+  };
+}
+
+function renderTree(people, relationships) {
+  const result = buildD3Tree(people, relationships);
+  if (!result) return;
+
+  const { hierarchyData, personMap, childToParents, parentToChildren } = result;
+
+  const NODE_W = 170, NODE_H = 80, H_GAP = 40, V_GAP = 140;
 
   const svg = d3.select('#tree-svg');
   const g = d3.select('#tree-group');
   g.selectAll('*').remove();
 
-  const zoom = d3.zoom()
-    .scaleExtent([0.2, 3])
-    .on('zoom', (event) => g.attr('transform', event.transform));
-
+  const zoom = d3.zoom().scaleExtent([0.1, 3]).on('zoom', e => g.attr('transform', e.transform));
   svg.call(zoom);
 
   document.getElementById('zoom-in').onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 1.3);
   document.getElementById('zoom-out').onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 0.77);
+
+  // Build d3 hierarchy
+  const root = d3.hierarchy(hierarchyData);
+
+  // Use d3.tree layout
+  const treeLayout = d3.tree()
+    .nodeSize([NODE_W + H_GAP, NODE_H + V_GAP])
+    .separation((a, b) => a.parent === b.parent ? 1 : 1.2);
+
+  treeLayout(root);
+
+  // Get bounds
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  root.each(d => {
+    if (d.data.virtual) return;
+    minX = Math.min(minX, d.x);
+    maxX = Math.max(maxX, d.x);
+    minY = Math.min(minY, d.y);
+    maxY = Math.max(maxY, d.y);
+  });
+
+  const totalW = maxX - minX + NODE_W + 200;
+  const totalH = maxY - minY + NODE_H + 200;
+
+  // Center
+  const offsetX = -minX + 100;
+  const offsetY = -minY + 100;
+
+  svg.call(zoom.transform, d3.zoomIdentity.translate(
+    (window.innerWidth - totalW) / 2,
+    (window.innerHeight - totalH) / 2
+  ));
+
   document.getElementById('reset-view').onclick = () => {
-    svg.transition().duration(500).call(
-      zoom.transform,
-      d3.zoomIdentity.translate(
-        window.innerWidth / 2 - totalW / 2,
-        window.innerHeight / 2 - totalH / 2
-      )
-    );
+    svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(
+      (window.innerWidth - totalW) / 2,
+      (window.innerHeight - totalH) / 2
+    ));
   };
 
-  const initX = (window.innerWidth - totalW) / 2;
-  const initY = (window.innerHeight - totalH) / 2;
-  svg.call(zoom.transform, d3.zoomIdentity.translate(initX, initY));
-
-  const positions = {};
-  usedRows.forEach((rowNum, ri) => {
-    const members = rows[rowNum];
-    const rowTotalW = members.length * NODE_W + (members.length - 1) * H_GAP;
-    const startX = (totalW - rowTotalW) / 2;
-    const y = PADDING + ri * (NODE_H + V_GAP);
-    members.forEach((member, mi) => {
-      const x = startX + mi * (NODE_W + H_GAP);
-      positions[member.id] = { x: x + NODE_W / 2, y, member };
-    });
-  });
-
-  const linkGroup = g.append('g').attr('class', 'links');
-
-  // KEY FIX: Group children by their EXACT parent set
-  // Only children that share ALL the same parents go in the same bracket
-  const familyUnits = {};
-  Object.entries(childToParents).forEach(([childId, parentIds]) => {
-    if (!positions[childId]) return;
-    const validParents = parentIds.filter(pid => positions[pid]).sort();
-    if (!validParents.length) return;
-    const key = validParents.join('|');
-    if (!familyUnits[key]) familyUnits[key] = { parents: validParents, children: [] };
-    familyUnits[key].children.push(childId);
-  });
-
-  Object.values(familyUnits).forEach(({ parents, children }) => {
-    const validChildren = children.filter(cid => positions[cid]);
-    if (!validChildren.length) return;
-
-    // Verify ALL children share ALL parents
-    // A child only belongs in this bracket if its parent list exactly matches
-    const bracketChildren = validChildren.filter(cid => {
-      const cParents = (childToParents[cid] || []).filter(pid => positions[pid]).sort();
-      return cParents.join('|') === parents.join('|');
-    });
-
-    if (!bracketChildren.length) return;
-
-    const parentXs = parents.map(pid => positions[pid].x);
-    const parentY = Math.max(...parents.map(pid => positions[pid].y)) + NODE_H;
-    const childXs = bracketChildren.map(cid => positions[cid].x);
-    const childY = Math.min(...bracketChildren.map(cid => positions[cid].y));
-    const midY = (parentY + childY) / 2;
-    const parentCenterX = (Math.min(...parentXs) + Math.max(...parentXs)) / 2;
-
-    // Parent horizontal connector
-    if (parents.length > 1) {
-      linkGroup.append('line').attr('class', 'link')
-        .attr('x1', Math.min(...parentXs)).attr('y1', parentY + 10)
-        .attr('x2', Math.max(...parentXs)).attr('y2', parentY + 10);
-    }
-
-    // Line down from parents
-    linkGroup.append('line').attr('class', 'link')
-      .attr('x1', parentCenterX)
-      .attr('y1', parents.length > 1 ? parentY + 10 : parentY)
-      .attr('x2', parentCenterX).attr('y2', midY);
-
-    // Child bracket
-    if (bracketChildren.length > 1) {
-      linkGroup.append('line').attr('class', 'link')
-        .attr('x1', Math.min(...childXs)).attr('y1', midY)
-        .attr('x2', Math.max(...childXs)).attr('y2', midY);
-      bracketChildren.forEach(cid => {
-        linkGroup.append('line').attr('class', 'link')
-          .attr('x1', positions[cid].x).attr('y1', midY)
-          .attr('x2', positions[cid].x).attr('y2', childY);
-      });
-    } else {
-      linkGroup.append('line').attr('class', 'link')
-        .attr('x1', parentCenterX).attr('y1', midY)
-        .attr('x2', childXs[0]).attr('y2', midY);
-      linkGroup.append('line').attr('class', 'link')
-        .attr('x1', childXs[0]).attr('y1', midY)
-        .attr('x2', childXs[0]).attr('y2', childY);
-    }
-  });
-
-  const nodeGroup = g.append('g').attr('class', 'nodes');
+  const linkGroup = g.append('g');
+  const nodeGroup = g.append('g');
   const tooltip = document.getElementById('tooltip');
 
-  Object.values(positions).forEach(({ x, y, member }, i) => {
+  // Draw links
+  root.links().forEach(({ source, target }) => {
+    if (source.data.virtual || target.data.virtual) return;
+
+    const sx = source.x + offsetX;
+    const sy = source.y + offsetY + NODE_H;
+    const tx = target.x + offsetX;
+    const ty = target.y + offsetY;
+    const midY = (sy + ty) / 2;
+
+    linkGroup.append('path')
+      .attr('class', 'link')
+      .attr('d', `M${sx},${sy} C${sx},${midY} ${tx},${midY} ${tx},${ty}`);
+  });
+
+  // Draw nodes
+  root.each((d, i) => {
+    if (d.data.virtual) return;
+    const member = d.data.data;
+    if (!member) return;
+
+    const x = d.x + offsetX - NODE_W / 2;
+    const y = d.y + offsetY;
     const isYou = member.relation === 'You';
+
     const nodeG = nodeGroup.append('g')
-      .attr('transform', `translate(${x - NODE_W/2}, ${y})`)
+      .attr('transform', `translate(${x}, ${y})`)
       .style('cursor', 'pointer')
       .style('opacity', 0);
 
-    nodeG.transition().delay(i * 30).duration(400).style('opacity', 1);
+    nodeG.transition().delay(i * 25).duration(400).style('opacity', 1);
 
     if (isYou) {
       nodeG.append('rect')
         .attr('x', -3).attr('y', -3)
         .attr('width', NODE_W + 6).attr('height', NODE_H + 6)
-        .attr('rx', 13)
-        .attr('fill', 'none')
-        .attr('stroke', '#C9A84C')
-        .attr('stroke-width', 1)
-        .attr('opacity', 0.5);
+        .attr('rx', 13).attr('fill', 'none')
+        .attr('stroke', '#C9A84C').attr('stroke-width', 1).attr('opacity', 0.5);
     }
 
     nodeG.append('rect')
-      .attr('width', NODE_W).attr('height', NODE_H)
-      .attr('rx', 10)
-      .attr('fill', '#111111')
-      .attr('stroke', '#C9A84C')
+      .attr('width', NODE_W).attr('height', NODE_H).attr('rx', 10)
+      .attr('fill', '#111111').attr('stroke', '#C9A84C')
       .attr('stroke-width', isYou ? 2.5 : 1.5)
       .attr('filter', isYou ? 'url(#glow)' : null);
 
     const name = member.name.length > 18 ? member.name.slice(0, 16) + '…' : member.name;
     nodeG.append('text')
-      .attr('x', NODE_W / 2).attr('y', 26)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#F0EDE8')
+      .attr('x', NODE_W/2).attr('y', 22)
+      .attr('text-anchor', 'middle').attr('fill', '#F0EDE8')
       .attr('font-family', 'Cormorant Garamond, serif')
-      .attr('font-size', '14px')
-      .attr('font-weight', '600')
+      .attr('font-size', '14px').attr('font-weight', '600')
       .text(name);
 
     nodeG.append('text')
-      .attr('x', NODE_W / 2).attr('y', 46)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#C9A84C')
-      .attr('font-family', 'DM Sans, sans-serif')
-      .attr('font-size', '10px')
+      .attr('x', NODE_W/2).attr('y', 38)
+      .attr('text-anchor', 'middle').attr('fill', '#C9A84C')
+      .attr('font-family', 'DM Sans, sans-serif').attr('font-size', '10px')
       .text(member.relation);
 
-    // Only show discord username if they linked their OWN account
-    if (member.discord_username && member.discord_id) {
+    // Added by
+    if (member.added_by) {
       nodeG.append('text')
-        .attr('x', NODE_W / 2).attr('y', 60)
-        .attr('text-anchor', 'middle')
-        .attr('fill', 'rgba(201,168,76,0.5)')
-        .attr('font-family', 'DM Sans, sans-serif')
-        .attr('font-size', '9px')
-        .text(`@${member.discord_username}`);
+        .attr('x', NODE_W/2).attr('y', 52)
+        .attr('text-anchor', 'middle').attr('fill', 'rgba(201,168,76,0.4)')
+        .attr('font-family', 'DM Sans, sans-serif').attr('font-size', '9px')
+        .text(`Added by: ${member.added_by}`);
+    }
+
+    // Discord — only show if different from added_by OR if it's the You card
+    const showDiscord = member.discord_username && (
+      isYou || member.discord_username !== member.added_by
+    );
+    if (showDiscord) {
+      nodeG.append('text')
+        .attr('x', NODE_W/2).attr('y', 65)
+        .attr('text-anchor', 'middle').attr('fill', 'rgba(201,168,76,0.6)')
+        .attr('font-family', 'DM Sans, sans-serif').attr('font-size', '9px')
+        .text(`Discord: @${member.discord_username}`);
     }
 
     nodeG.on('mouseenter', function(event) {
@@ -567,13 +357,10 @@ function renderTree(people, relationships) {
       let detail = '';
       if (parents.length) detail += `<span>Child of:</span> ${parents.join(', ')}<br>`;
       if (children.length) detail += `<span>Parent of:</span> ${children.join(', ')}<br>`;
-      if (member.birthday && !member.birthday.startsWith('1900')) {
-        const bday = new Date(member.birthday);
-        detail += `<span>Birthday:</span> ${bday.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}<br>`;
-      }
-      if (member.discord_username && member.discord_id) {
-        detail += `<span>Discord:</span> @${member.discord_username}`;
-      }
+      const bday = formatBirthday(member.birthday);
+      if (bday) detail += `<span>Birthday:</span> ${bday}<br>`;
+      if (member.added_by) detail += `<span>Added by:</span> ${member.added_by}<br>`;
+      if (member.discord_username) detail += `<span>Discord:</span> @${member.discord_username}`;
 
       document.getElementById('tt-detail').innerHTML = detail || 'No additional info';
       tooltip.classList.add('visible');
@@ -582,12 +369,12 @@ function renderTree(people, relationships) {
       tooltip.style.left = (event.clientX + 16) + 'px';
       tooltip.style.top = (event.clientY - 10) + 'px';
     })
-    .on('mouseleave', function() {
-      tooltip.classList.remove('visible');
-    });
+    .on('mouseleave', function() { tooltip.classList.remove('visible'); });
   });
 
-  document.getElementById('member-count').textContent = `${connected.length} Members`;
+  const connectedCount = new Set();
+  relationships.forEach(r => { connectedCount.add(r.person_a); connectedCount.add(r.person_b); });
+  document.getElementById('member-count').textContent = `${connectedCount.size} Members`;
 }
 
 async function init() {
@@ -596,7 +383,7 @@ async function init() {
     renderTree(people, relationships);
     setTimeout(() => document.getElementById('loading').classList.add('hidden'), 800);
   } catch (err) {
-    console.error('Failed to load family tree:', err);
+    console.error(err);
     document.querySelector('.loading p').textContent = 'Failed to load. Check your connection.';
   }
 }
