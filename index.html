@@ -145,10 +145,11 @@ async function fetchData() {
   return { people: await peopleRes.json(), relationships: await relsRes.json() };
 }
 
-function buildD3Tree(people, relationships) {
+function renderTree(people, relationships) {
   const personMap = {};
   people.forEach(p => personMap[p.id] = p);
 
+  // Build bidirectional maps
   const childToParents = {};
   const parentToChildren = {};
   relationships.forEach(r => {
@@ -158,61 +159,86 @@ function buildD3Tree(people, relationships) {
     parentToChildren[r.person_a].push(r.person_b);
   });
 
-  // Find Jamisha as root
-  const root = people.find(p => p.relation === 'You');
-  if (!root) return null;
+  // Find Jamisha
+  const jamisha = people.find(p => p.relation === 'You');
+  if (!jamisha) return;
 
-  // Build hierarchy from Jamisha down first, then add ancestors
-  // Create a virtual root that contains everyone
+  // Build positions manually using generation rows
+  // Find all ancestors of Jamisha going UP
+  const positions = {};
+  const NODE_W = 170, NODE_H = 80, H_GAP = 30, V_GAP = 130;
+
+  // Assign generation levels relative to Jamisha (0 = Jamisha, -1 = parents, -2 = grandparents, 1 = children, etc)
+  const levels = {};
+  const visited = new Set();
+
+  function assignLevels(id, level) {
+    if (visited.has(id)) return;
+    visited.add(id);
+    levels[id] = level;
+    // Go up to parents
+    (childToParents[id] || []).forEach(pid => assignLevels(pid, level - 1));
+    // Go down to children
+    (parentToChildren[id] || []).forEach(cid => assignLevels(cid, level + 1));
+  }
+
+  assignLevels(jamisha.id, 0);
+
+  // Also add siblings and their families — find everyone connected
+  // Get all connected people
   const connectedIds = new Set();
   relationships.forEach(r => { connectedIds.add(r.person_a); connectedIds.add(r.person_b); });
 
-  // Find true roots (no parents in tree)
-  const hasParents = new Set(Object.keys(childToParents));
-  const roots = [...connectedIds].filter(id => !hasParents.has(id));
-
-  // If multiple roots, create virtual root
-  let hierarchyData;
-  if (roots.length === 1) {
-    hierarchyData = buildNode(roots[0], personMap, parentToChildren, new Set());
-  } else {
-    hierarchyData = {
-      id: 'virtual-root',
-      name: '',
-      virtual: true,
-      children: roots.map(rid => buildNode(rid, personMap, parentToChildren, new Set()))
-    };
-  }
-
-  return { hierarchyData, personMap, childToParents, parentToChildren };
-}
-
-function buildNode(id, personMap, parentToChildren, visited) {
-  if (visited.has(id)) return null;
-  visited.add(id);
-  const person = personMap[id];
-  if (!person) return null;
-
-  const children = (parentToChildren[id] || [])
-    .map(cid => buildNode(cid, personMap, parentToChildren, new Set([...visited])))
-    .filter(Boolean);
-
-  return {
-    id,
-    name: person.name,
-    data: person,
-    children: children.length ? children : null
+  // Anyone not yet assigned a level — add them based on their relation label
+  const RELATION_TO_LEVEL = {
+    'Great-Grandparent': -3,
+    'Grandparent': -2,
+    'Mother': -1, 'Father': -1, 'Step-Mother': -1, 'Step-Father': -1, 'Aunt': -1, 'Uncle': -1,
+    'You': 0, 'Sibling': 0, 'Cousin': 0, 'Spouse/Partner': 0, 'Co-Parent': 0, 'In-Law': 0,
+    'Son': 1, 'Daughter': 1, 'Niece': 1, 'Nephew': 1,
+    'Grandchild': 2,
   };
-}
 
-function renderTree(people, relationships) {
-  const result = buildD3Tree(people, relationships);
-  if (!result) return;
+  connectedIds.forEach(id => {
+    if (!levels[id] && levels[id] !== 0) {
+      const person = personMap[id];
+      if (person) levels[id] = RELATION_TO_LEVEL[person.relation] ?? 0;
+    }
+  });
 
-  const { hierarchyData, personMap, childToParents, parentToChildren } = result;
+  // Group by level
+  const levelGroups = {};
+  connectedIds.forEach(id => {
+    const lvl = levels[id] ?? 0;
+    if (!levelGroups[lvl]) levelGroups[lvl] = [];
+    levelGroups[lvl].push(id);
+  });
 
-  const NODE_W = 170, NODE_H = 80, H_GAP = 40, V_GAP = 140;
+  const usedLevels = Object.keys(levelGroups).map(Number).sort((a,b) => a - b);
+  const maxInRow = Math.max(...usedLevels.map(l => levelGroups[l].length));
+  const totalW = Math.max(1200, maxInRow * (NODE_W + H_GAP) + 200);
+  const levelToRow = {};
+  usedLevels.forEach((lvl, ri) => levelToRow[lvl] = ri);
 
+  usedLevels.forEach((lvl, ri) => {
+    const members = levelGroups[lvl];
+    // Sort so Jamisha is first in her row
+    members.sort((a, b) => {
+      if (a === jamisha.id) return -1;
+      if (b === jamisha.id) return 1;
+      return 0;
+    });
+    const rowTotalW = members.length * NODE_W + (members.length - 1) * H_GAP;
+    const startX = (totalW - rowTotalW) / 2;
+    const y = ri * (NODE_H + V_GAP) + 80;
+    members.forEach((id, mi) => {
+      positions[id] = { x: startX + mi * (NODE_W + H_GAP) + NODE_W/2, y };
+    });
+  });
+
+  const totalH = usedLevels.length * (NODE_H + V_GAP) + 160;
+
+  // Render
   const svg = d3.select('#tree-svg');
   const g = d3.select('#tree-group');
   g.selectAll('*').remove();
@@ -220,76 +246,86 @@ function renderTree(people, relationships) {
   const zoom = d3.zoom().scaleExtent([0.1, 3]).on('zoom', e => g.attr('transform', e.transform));
   svg.call(zoom);
 
+  const centerX = (window.innerWidth - totalW) / 2;
+  const centerY = (window.innerHeight - totalH) / 2;
+  svg.call(zoom.transform, d3.zoomIdentity.translate(centerX, centerY));
+
   document.getElementById('zoom-in').onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 1.3);
   document.getElementById('zoom-out').onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 0.77);
-
-  // Build d3 hierarchy
-  const root = d3.hierarchy(hierarchyData);
-
-  // Use d3.tree layout
-  const treeLayout = d3.tree()
-    .nodeSize([NODE_W + H_GAP, NODE_H + V_GAP])
-    .separation((a, b) => a.parent === b.parent ? 1 : 1.2);
-
-  treeLayout(root);
-
-  // Get bounds
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  root.each(d => {
-    if (d.data.virtual) return;
-    minX = Math.min(minX, d.x);
-    maxX = Math.max(maxX, d.x);
-    minY = Math.min(minY, d.y);
-    maxY = Math.max(maxY, d.y);
-  });
-
-  const totalW = maxX - minX + NODE_W + 200;
-  const totalH = maxY - minY + NODE_H + 200;
-
-  // Center
-  const offsetX = -minX + 100;
-  const offsetY = -minY + 100;
-
-  svg.call(zoom.transform, d3.zoomIdentity.translate(
-    (window.innerWidth - totalW) / 2,
-    (window.innerHeight - totalH) / 2
-  ));
-
-  document.getElementById('reset-view').onclick = () => {
-    svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(
-      (window.innerWidth - totalW) / 2,
-      (window.innerHeight - totalH) / 2
-    ));
-  };
+  document.getElementById('reset-view').onclick = () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(centerX, centerY));
 
   const linkGroup = g.append('g');
-  const nodeGroup = g.append('g');
-  const tooltip = document.getElementById('tooltip');
 
-  // Draw links
-  root.links().forEach(({ source, target }) => {
-    if (source.data.virtual || target.data.virtual) return;
+  // Draw lines — group by exact parent set
+  const familyUnits = {};
+  Object.entries(childToParents).forEach(([childId, parentIds]) => {
+    if (!positions[childId]) return;
+    const validParents = parentIds.filter(pid => positions[pid]).sort();
+    if (!validParents.length) return;
+    const key = validParents.join('|');
+    if (!familyUnits[key]) familyUnits[key] = { parents: validParents, children: [] };
+    familyUnits[key].children.push(childId);
+  });
 
-    const sx = source.x + offsetX;
-    const sy = source.y + offsetY + NODE_H;
-    const tx = target.x + offsetX;
-    const ty = target.y + offsetY;
-    const midY = (sy + ty) / 2;
+  Object.values(familyUnits).forEach(({ parents, children }) => {
+    const bracketChildren = children.filter(cid => {
+      if (!positions[cid]) return false;
+      const cParents = (childToParents[cid] || []).filter(pid => positions[pid]).sort();
+      return cParents.join('|') === parents.join('|');
+    });
+    if (!bracketChildren.length) return;
 
-    linkGroup.append('path')
-      .attr('class', 'link')
-      .attr('d', `M${sx},${sy} C${sx},${midY} ${tx},${midY} ${tx},${ty}`);
+    const parentXs = parents.map(pid => positions[pid].x);
+    const parentY = Math.max(...parents.map(pid => positions[pid].y)) + NODE_H;
+    const childXs = bracketChildren.map(cid => positions[cid].x);
+    const childY = Math.min(...bracketChildren.map(cid => positions[cid].y));
+    const midY = (parentY + childY) / 2;
+    const parentCenterX = parentXs.length === 1
+      ? parentXs[0]
+      : (Math.min(...parentXs) + Math.max(...parentXs)) / 2;
+
+    if (parents.length > 1) {
+      linkGroup.append('line').attr('class', 'link')
+        .attr('x1', Math.min(...parentXs)).attr('y1', parentY + 10)
+        .attr('x2', Math.max(...parentXs)).attr('y2', parentY + 10);
+    }
+
+    linkGroup.append('line').attr('class', 'link')
+      .attr('x1', parentCenterX)
+      .attr('y1', parents.length > 1 ? parentY + 10 : parentY)
+      .attr('x2', parentCenterX).attr('y2', midY);
+
+    if (bracketChildren.length > 1) {
+      linkGroup.append('line').attr('class', 'link')
+        .attr('x1', Math.min(...childXs)).attr('y1', midY)
+        .attr('x2', Math.max(...childXs)).attr('y2', midY);
+      bracketChildren.forEach(cid => {
+        linkGroup.append('line').attr('class', 'link')
+          .attr('x1', positions[cid].x).attr('y1', midY)
+          .attr('x2', positions[cid].x).attr('y2', childY);
+      });
+    } else {
+      linkGroup.append('line').attr('class', 'link')
+        .attr('x1', parentCenterX).attr('y1', midY)
+        .attr('x2', childXs[0]).attr('y2', midY);
+      linkGroup.append('line').attr('class', 'link')
+        .attr('x1', childXs[0]).attr('y1', midY)
+        .attr('x2', childXs[0]).attr('y2', childY);
+    }
   });
 
   // Draw nodes
-  root.each((d, i) => {
-    if (d.data.virtual) return;
-    const member = d.data.data;
-    if (!member) return;
+  const nodeGroup = g.append('g');
+  const tooltip = document.getElementById('tooltip');
 
-    const x = d.x + offsetX - NODE_W / 2;
-    const y = d.y + offsetY;
+  connectedIds.forEach((id, i) => {
+    const member = personMap[id];
+    const pos = positions[id];
+    if (!member || !pos) return;
+
     const isYou = member.relation === 'You';
+    const x = pos.x - NODE_W / 2;
+    const y = pos.y;
 
     const nodeG = nodeGroup.append('g')
       .attr('transform', `translate(${x}, ${y})`)
@@ -326,7 +362,6 @@ function renderTree(people, relationships) {
       .attr('font-family', 'DM Sans, sans-serif').attr('font-size', '10px')
       .text(member.relation);
 
-    // Added by
     if (member.added_by) {
       nodeG.append('text')
         .attr('x', NODE_W/2).attr('y', 52)
@@ -335,7 +370,6 @@ function renderTree(people, relationships) {
         .text(`Added by: ${member.added_by}`);
     }
 
-    // Discord — only show if different from added_by OR if it's the You card
     const showDiscord = member.discord_username && (
       isYou || member.discord_username !== member.added_by
     );
@@ -372,9 +406,7 @@ function renderTree(people, relationships) {
     .on('mouseleave', function() { tooltip.classList.remove('visible'); });
   });
 
-  const connectedCount = new Set();
-  relationships.forEach(r => { connectedCount.add(r.person_a); connectedCount.add(r.person_b); });
-  document.getElementById('member-count').textContent = `${connectedCount.size} Members`;
+  document.getElementById('member-count').textContent = `${connectedIds.size} Members`;
 }
 
 async function init() {
