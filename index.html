@@ -166,22 +166,21 @@ function renderTree(people, relationships) {
   const hasParents = new Set(Object.keys(childToParents));
   const roots = connected.filter(p => !hasParents.has(p.id));
 
-  // Build node recursively
-  function buildNode(id, visited = new Set()) {
+  // Build node with ONE shared visited set — no duplicates
+  const visited = new Set();
+  function buildNode(id) {
     if (visited.has(id)) return null;
     visited.add(id);
     const person = personMap[id];
     if (!person) return null;
     const children = (parentToChildren[id] || [])
-      .map(cid => buildNode(cid, new Set(visited)))
+      .map(cid => buildNode(cid))
       .filter(Boolean);
     return { id, data: person, children: children.length ? children : null };
   }
 
-  // Build all root nodes
   const rootNodes = roots.map(r => buildNode(r.id)).filter(Boolean);
 
-  // Wrap in virtual root if multiple
   const hierarchyData = rootNodes.length === 1
     ? rootNodes[0]
     : { id: 'virtual', data: null, children: rootNodes };
@@ -202,7 +201,6 @@ function renderTree(people, relationships) {
 
   treeLayout(root);
 
-  // Get bounds excluding virtual root
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   root.each(d => {
     if (!d.data.data) return;
@@ -229,7 +227,6 @@ function renderTree(people, relationships) {
   const nodeGroup = g.append('g');
   const tooltip = document.getElementById('tooltip');
 
-  // Draw links — skip virtual root links
   root.links().forEach(({ source, target }) => {
     if (!source.data.data || !target.data.data) return;
     const sx = source.x + offsetX;
@@ -241,7 +238,6 @@ function renderTree(people, relationships) {
       .attr('d', `M${sx},${sy} C${sx},${midY} ${tx},${midY} ${tx},${ty}`);
   });
 
-  // Draw nodes — skip virtual root
   let nodeIndex = 0;
   root.each(d => {
     if (!d.data.data) return;
