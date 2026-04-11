@@ -15,7 +15,6 @@
     --gold-dim: rgba(201,168,76,0.15);
     --gold-glow: rgba(201,168,76,0.35);
     --black: #000000;
-    --surface: #0A0A0A;
     --card: #111111;
     --text: #F0EDE8;
     --text-dim: rgba(240,237,232,0.5);
@@ -23,275 +22,57 @@
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  
-  body { 
-    background: var(--black); 
-    color: var(--text); 
-    font-family: 'DM Sans', sans-serif; 
-    min-height: 100vh; 
-    overflow: hidden; 
-  }
+  body { background: var(--black); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow: hidden; }
 
-  body::before { 
-    content: ''; 
-    position: fixed; 
-    inset: 0; 
-    background: 
-      radial-gradient(ellipse at 20% 50%, rgba(201,168,76,0.03) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 20%, rgba(201,168,76,0.03) 0%, transparent 60%);
-    pointer-events: none; 
-    z-index: 0;
-  }
+  body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse at 20% 50%, rgba(201,168,76,0.03) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(201,168,76,0.03) 0%, transparent 60%); pointer-events: none; z-index: 0; }
 
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.4;
-  }
-
-  /* HEADER */
-  header { 
-    position: fixed; 
-    top: 0; left: 0; right: 0; 
-    z-index: 50; 
-    padding: 20px 40px; 
-    background: linear-gradient(to bottom, rgba(0,0,0,0.98) 0%, transparent 100%); 
-    display: flex; 
-    align-items: center; 
-    justify-content: space-between; 
-  }
-
+  header { position: fixed; top: 0; left: 0; right: 0; z-index: 50; padding: 20px 40px; background: linear-gradient(to bottom, rgba(0,0,0,0.98) 0%, transparent 100%); display: flex; align-items: center; justify-content: space-between; }
   .header-left { display: flex; align-items: center; gap: 20px; }
-  
   .ornament { display: flex; align-items: center; gap: 10px; }
   .orn-line { width: 40px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
   .orn-line.r { background: linear-gradient(90deg, var(--gold), transparent); }
   .orn-diamond { width: 6px; height: 6px; background: var(--gold); transform: rotate(45deg); }
-
-  h1 { 
-    font-family: 'Cormorant Garamond', serif; 
-    font-size: 26px; 
-    font-weight: 600; 
-    color: var(--text); 
-    letter-spacing: 2px; 
-  }
+  h1 { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; color: var(--text); letter-spacing: 2px; }
   h1 em { color: var(--gold); font-style: italic; }
-
-  .member-count { 
-    font-size: 10px; 
-    letter-spacing: 3px; 
-    text-transform: uppercase; 
-    color: var(--text-dim); 
-    border: 1px solid var(--border); 
-    padding: 5px 14px; 
-    border-radius: 2px;
-    background: rgba(201,168,76,0.05);
-  }
-
+  .member-count { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); border: 1px solid var(--border); padding: 5px 14px; border-radius: 2px; background: rgba(201,168,76,0.05); }
   .controls { display: flex; gap: 8px; }
-  .ctrl-btn { 
-    background: rgba(201,168,76,0.08); 
-    border: 1px solid var(--border); 
-    color: var(--gold); 
-    width: 36px; height: 36px; 
-    border-radius: 4px; 
-    cursor: pointer; 
-    font-size: 16px; 
-    display: flex; align-items: center; justify-content: center; 
-    transition: all 0.2s;
-    font-family: 'Cormorant Garamond', serif;
-  }
+  .ctrl-btn { background: rgba(201,168,76,0.08); border: 1px solid var(--border); color: var(--gold); width: 36px; height: 36px; border-radius: 4px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-family: 'Cormorant Garamond', serif; }
   .ctrl-btn:hover { background: var(--gold-dim); box-shadow: 0 0 12px var(--gold-glow); }
 
-  /* TREE */
   #cy { width: 100vw; height: 100vh; background: transparent; }
 
-  /* SIDE PANEL */
-  .side-panel {
-    position: fixed;
-    top: 0; right: -420px;
-    width: 400px;
-    height: 100vh;
-    background: linear-gradient(180deg, #0D0D0D 0%, #080808 100%);
-    border-left: 1px solid var(--border);
-    z-index: 200;
-    transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
+  .side-panel { position: fixed; top: 0; right: -420px; width: 400px; height: 100vh; background: linear-gradient(180deg, #0D0D0D 0%, #080808 100%); border-left: 1px solid var(--border); z-index: 200; transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; overflow: hidden; }
   .side-panel.open { right: 0; }
-
-  .panel-header {
-    padding: 40px 32px 24px;
-    border-bottom: 1px solid var(--border);
-    position: relative;
-    background: linear-gradient(180deg, rgba(201,168,76,0.05) 0%, transparent 100%);
-  }
-
-  .panel-close {
-    position: absolute;
-    top: 20px; right: 20px;
-    width: 32px; height: 32px;
-    background: rgba(201,168,76,0.1);
-    border: 1px solid var(--border);
-    border-radius: 50%;
-    color: var(--gold);
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-    transition: all 0.2s;
-  }
+  .panel-header { padding: 40px 32px 24px; border-bottom: 1px solid var(--border); position: relative; background: linear-gradient(180deg, rgba(201,168,76,0.05) 0%, transparent 100%); }
+  .panel-close { position: absolute; top: 20px; right: 20px; width: 32px; height: 32px; background: rgba(201,168,76,0.1); border: 1px solid var(--border); border-radius: 50%; color: var(--gold); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all 0.2s; }
   .panel-close:hover { background: var(--gold-dim); }
-
-  .panel-ornament {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
+  .panel-ornament { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
   .panel-orn-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--gold), transparent); }
-
-  .panel-name {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 28px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 6px;
-    line-height: 1.2;
-  }
-
-  .panel-relation {
-    font-size: 11px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 4px;
-  }
-
-  .panel-discord {
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 1px;
-  }
-
-  .panel-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 24px 32px;
-  }
-
+  .panel-name { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 600; color: var(--text); margin-bottom: 6px; line-height: 1.2; }
+  .panel-relation { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+  .panel-discord { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+  .panel-body { flex: 1; overflow-y: auto; padding: 24px 32px; }
   .panel-body::-webkit-scrollbar { width: 4px; }
   .panel-body::-webkit-scrollbar-track { background: transparent; }
   .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-  .panel-section {
-    margin-bottom: 28px;
-  }
-
-  .panel-section-title {
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .panel-section-title::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg, var(--border), transparent);
-  }
-
-  .relation-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .relation-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    background: rgba(201,168,76,0.04);
-    border: 1px solid rgba(201,168,76,0.1);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .relation-item:hover {
-    background: rgba(201,168,76,0.08);
-    border-color: rgba(201,168,76,0.25);
-    transform: translateX(4px);
-  }
-
-  .relation-dot {
-    width: 6px; height: 6px;
-    background: var(--gold);
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
+  .panel-section { margin-bottom: 28px; }
+  .panel-section-title { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+  .panel-section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
+  .relation-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .relation-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(201,168,76,0.04); border: 1px solid rgba(201,168,76,0.1); border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+  .relation-item:hover { background: rgba(201,168,76,0.08); border-color: rgba(201,168,76,0.25); transform: translateX(4px); }
+  .relation-dot { width: 6px; height: 6px; background: var(--gold); border-radius: 50%; flex-shrink: 0; }
   .relation-item-content { flex: 1; }
   .relation-item-name { font-size: 13px; color: var(--text); font-family: 'Cormorant Garamond', serif; font-weight: 600; }
   .relation-item-role { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-top: 1px; }
-
   .relation-arrow { color: var(--gold); opacity: 0.5; font-size: 12px; }
-
-  .birthday-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
-    background: rgba(201,168,76,0.08);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 13px;
-    color: var(--text);
-    font-family: 'Cormorant Garamond', serif;
-  }
-
-  .added-by-text {
-    font-size: 12px;
-    color: var(--text-dim);
-    font-style: italic;
-    padding: 8px 0;
-  }
-
-  .panel-footer {
-    padding: 20px 32px;
-    border-top: 1px solid var(--border);
-    background: linear-gradient(0deg, rgba(201,168,76,0.03) 0%, transparent 100%);
-  }
-
-  .footer-ornament {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    opacity: 0.4;
-  }
+  .birthday-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(201,168,76,0.08); border: 1px solid var(--border); border-radius: 6px; font-size: 13px; color: var(--text); font-family: 'Cormorant Garamond', serif; }
+  .added-by-text { font-size: 12px; color: var(--text-dim); font-style: italic; padding: 8px 0; }
+  .panel-footer { padding: 20px 32px; border-top: 1px solid var(--border); background: linear-gradient(0deg, rgba(201,168,76,0.03) 0%, transparent 100%); }
+  .footer-ornament { display: flex; align-items: center; justify-content: center; gap: 12px; opacity: 0.4; }
   .footer-orn-line { width: 60px; height: 1px; background: var(--gold); }
 
-  /* LOADING */
-  .loading { 
-    position: fixed; inset: 0; 
-    display: flex; flex-direction: column; align-items: center; justify-content: center; 
-    background: var(--black); 
-    z-index: 300; 
-    transition: opacity 0.6s; 
-  }
+  .loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--black); z-index: 300; transition: opacity 0.6s; }
   .loading.hidden { opacity: 0; pointer-events: none; }
   .loading-ornament { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
   .loading-line { width: 80px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); animation: loadLine 1.5s ease-in-out infinite; }
@@ -302,30 +83,16 @@
   .loading p { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); animation: pulse 1.5s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
-  /* FOOTER */
-  footer { 
-    position: fixed; bottom: 0; left: 0; right: 0; 
-    padding: 16px 40px; 
-    background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, transparent 100%); 
-    display: flex; align-items: center; justify-content: space-between; 
-    z-index: 50; 
-  }
+  footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 16px 40px; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, transparent 100%); display: flex; align-items: center; justify-content: space-between; z-index: 50; }
   .legend { display: flex; align-items: center; gap: 20px; }
   .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px; }
   .legend-box { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid var(--gold); background: #111111; }
   .legend-box.you { border-width: 2.5px; box-shadow: 0 0 8px var(--gold-glow); }
+  .legend-line { width: 24px; height: 2px; background: var(--gold); }
+  .legend-line.dashed { background: none; border-top: 2px dashed var(--gold); }
   .hint { font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px; }
 
-  /* OVERLAY */
-  .overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    z-index: 150;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s;
-  }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 150; opacity: 0; pointer-events: none; transition: opacity 0.4s; }
   .overlay.visible { opacity: 1; pointer-events: all; }
 </style>
 </head>
@@ -352,14 +119,13 @@
     <div class="member-count" id="member-count">Loading...</div>
   </div>
   <div class="controls">
-    <button class="ctrl-btn" id="zoom-in" title="Zoom In">+</button>
-    <button class="ctrl-btn" id="zoom-out" title="Zoom Out">−</button>
-    <button class="ctrl-btn" id="reset-view" title="Reset">⌂</button>
+    <button class="ctrl-btn" id="zoom-in">+</button>
+    <button class="ctrl-btn" id="zoom-out">−</button>
+    <button class="ctrl-btn" id="reset-view">⌂</button>
   </div>
 </header>
 
 <div id="cy"></div>
-
 <div class="overlay" id="overlay"></div>
 
 <div class="side-panel" id="side-panel">
@@ -387,6 +153,8 @@
   <div class="legend">
     <div class="legend-item"><div class="legend-box you"></div><span>Jamisha (Root)</span></div>
     <div class="legend-item"><div class="legend-box"></div><span>Family Member</span></div>
+    <div class="legend-item"><div class="legend-line"></div><span>Parent / Child</span></div>
+    <div class="legend-item"><div class="legend-line dashed"></div><span>Partner / Co-Parent</span></div>
   </div>
   <div class="hint">Scroll to zoom · Drag to pan · Click a card for details</div>
 </footer>
@@ -394,7 +162,6 @@
 <script>
 const SUPABASE_URL = 'https://wlifcojugqocdxfkwoae.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndsaWZjb2p1Z3FvY2R4Zmt3b2FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MDU4NTYsImV4cCI6MjA5MTA4MTg1Nn0.TKcJPTEFFcBM4lZgKMd8H4Ejy9F7wTmPdYMkYofMMCQ';
-
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function formatBirthday(dateStr) {
@@ -406,8 +173,8 @@ function formatBirthday(dateStr) {
 async function fetchData() {
   const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` };
   const [peopleRes, relsRes] = await Promise.all([
-    fetch(`${SUPABASE_URL}/rest/v1/people?select=*`, { headers }),
-    fetch(`${SUPABASE_URL}/rest/v1/relationships?select=*`, { headers })
+    fetch(`${SUPABASE_URL}/rest/v1/people?select=*&order=created_at.asc`, { headers }),
+    fetch(`${SUPABASE_URL}/rest/v1/relationships?select=*&order=created_at.asc`, { headers })
   ]);
   return { people: await peopleRes.json(), relationships: await relsRes.json() };
 }
@@ -416,25 +183,37 @@ let cyInstance = null;
 let personMapGlobal = {};
 let childToParentsGlobal = {};
 let parentToChildrenGlobal = {};
+let partnersGlobal = {};
 
 function openPanel(member) {
-  const panel = document.getElementById('side-panel');
-  const overlay = document.getElementById('overlay');
-
   document.getElementById('panel-name').textContent = member.name;
   document.getElementById('panel-relation').textContent = member.relation;
-
   const discordEl = document.getElementById('panel-discord');
-  if (member.discord_username) {
-    discordEl.textContent = `Discord: @${member.discord_username}`;
-  } else {
-    discordEl.textContent = '';
-  }
+  discordEl.textContent = member.discord_username ? `Discord: @${member.discord_username}` : '';
 
   const body = document.getElementById('panel-body');
   body.innerHTML = '';
 
-  // Parents section
+  // Partners / Co-Parents
+  const partnerIds = partnersGlobal[member.id] || [];
+  if (partnerIds.length > 0) {
+    const section = document.createElement('div');
+    section.className = 'panel-section';
+    section.innerHTML = `<div class="panel-section-title">Partner / Co-Parent</div><ul class="relation-list"></ul>`;
+    const list = section.querySelector('.relation-list');
+    partnerIds.forEach(pid => {
+      const p = personMapGlobal[pid];
+      if (!p) return;
+      const li = document.createElement('li');
+      li.className = 'relation-item';
+      li.innerHTML = `<div class="relation-dot"></div><div class="relation-item-content"><div class="relation-item-name">${p.name}</div><div class="relation-item-role">${p.relation}</div></div><div class="relation-arrow">›</div>`;
+      li.onclick = () => { cyInstance.$(`node[id="${pid}"]`).select(); openPanel(p); };
+      list.appendChild(li);
+    });
+    body.appendChild(section);
+  }
+
+  // Parents
   const parentIds = childToParentsGlobal[member.id] || [];
   if (parentIds.length > 0) {
     const section = document.createElement('div');
@@ -446,24 +225,14 @@ function openPanel(member) {
       if (!p) return;
       const li = document.createElement('li');
       li.className = 'relation-item';
-      li.innerHTML = `
-        <div class="relation-dot"></div>
-        <div class="relation-item-content">
-          <div class="relation-item-name">${p.name}</div>
-          <div class="relation-item-role">${p.relation}</div>
-        </div>
-        <div class="relation-arrow">›</div>
-      `;
-      li.onclick = () => {
-        cyInstance.$(`node[id="${pid}"]`).select();
-        openPanel(p);
-      };
+      li.innerHTML = `<div class="relation-dot"></div><div class="relation-item-content"><div class="relation-item-name">${p.name}</div><div class="relation-item-role">${p.relation}</div></div><div class="relation-arrow">›</div>`;
+      li.onclick = () => { cyInstance.$(`node[id="${pid}"]`).select(); openPanel(p); };
       list.appendChild(li);
     });
     body.appendChild(section);
   }
 
-  // Children section
+  // Children
   const childIds = parentToChildrenGlobal[member.id] || [];
   if (childIds.length > 0) {
     const section = document.createElement('div');
@@ -475,35 +244,23 @@ function openPanel(member) {
       if (!c) return;
       const li = document.createElement('li');
       li.className = 'relation-item';
-      li.innerHTML = `
-        <div class="relation-dot"></div>
-        <div class="relation-item-content">
-          <div class="relation-item-name">${c.name}</div>
-          <div class="relation-item-role">${c.relation}</div>
-        </div>
-        <div class="relation-arrow">›</div>
-      `;
-      li.onclick = () => {
-        cyInstance.$(`node[id="${cid}"]`).select();
-        openPanel(c);
-      };
+      li.innerHTML = `<div class="relation-dot"></div><div class="relation-item-content"><div class="relation-item-name">${c.name}</div><div class="relation-item-role">${c.relation}</div></div><div class="relation-arrow">›</div>`;
+      li.onclick = () => { cyInstance.$(`node[id="${cid}"]`).select(); openPanel(c); };
       list.appendChild(li);
     });
     body.appendChild(section);
   }
 
-  // Siblings section — people who share at least one parent
+  // Siblings
   const siblings = [];
   parentIds.forEach(pid => {
-    const sibIds = parentToChildrenGlobal[pid] || [];
-    sibIds.forEach(sid => {
+    (parentToChildrenGlobal[pid] || []).forEach(sid => {
       if (sid !== member.id && !siblings.find(s => s.id === sid)) {
         const sib = personMapGlobal[sid];
         if (sib) siblings.push(sib);
       }
     });
   });
-
   if (siblings.length > 0) {
     const section = document.createElement('div');
     section.className = 'panel-section';
@@ -512,48 +269,32 @@ function openPanel(member) {
     siblings.forEach(sib => {
       const li = document.createElement('li');
       li.className = 'relation-item';
-      li.innerHTML = `
-        <div class="relation-dot"></div>
-        <div class="relation-item-content">
-          <div class="relation-item-name">${sib.name}</div>
-          <div class="relation-item-role">${sib.relation}</div>
-        </div>
-        <div class="relation-arrow">›</div>
-      `;
-      li.onclick = () => {
-        cyInstance.$(`node[id="${sib.id}"]`).select();
-        openPanel(sib);
-      };
+      li.innerHTML = `<div class="relation-dot"></div><div class="relation-item-content"><div class="relation-item-name">${sib.name}</div><div class="relation-item-role">${sib.relation}</div></div><div class="relation-arrow">›</div>`;
+      li.onclick = () => { cyInstance.$(`node[id="${sib.id}"]`).select(); openPanel(sib); };
       list.appendChild(li);
     });
     body.appendChild(section);
   }
 
-  // Birthday section
+  // Birthday
   const bday = formatBirthday(member.birthday);
   if (bday) {
     const section = document.createElement('div');
     section.className = 'panel-section';
-    section.innerHTML = `
-      <div class="panel-section-title">Birthday</div>
-      <div class="birthday-badge">🎂 ${bday}</div>
-    `;
+    section.innerHTML = `<div class="panel-section-title">Birthday</div><div class="birthday-badge">🎂 ${bday}</div>`;
     body.appendChild(section);
   }
 
-  // Added by section
+  // Added by
   if (member.added_by) {
     const section = document.createElement('div');
     section.className = 'panel-section';
-    section.innerHTML = `
-      <div class="panel-section-title">Added By</div>
-      <div class="added-by-text">Added to the tree by ${member.added_by}</div>
-    `;
+    section.innerHTML = `<div class="panel-section-title">Added By</div><div class="added-by-text">Added to the tree by ${member.added_by}</div>`;
     body.appendChild(section);
   }
 
-  panel.classList.add('open');
-  overlay.classList.add('visible');
+  document.getElementById('side-panel').classList.add('open');
+  document.getElementById('overlay').classList.add('visible');
 }
 
 function closePanel() {
@@ -565,14 +306,30 @@ function closePanel() {
 async function init() {
   try {
     const { people, relationships } = await fetchData();
-
     people.forEach(p => personMapGlobal[p.id] = p);
 
+    const seenEdges = new Set();
+    const edges = [];
+
     relationships.forEach(r => {
-      if (!childToParentsGlobal[r.person_b]) childToParentsGlobal[r.person_b] = [];
-      childToParentsGlobal[r.person_b].push(r.person_a);
-      if (!parentToChildrenGlobal[r.person_a]) parentToChildrenGlobal[r.person_a] = [];
-      parentToChildrenGlobal[r.person_a].push(r.person_b);
+      const key = `${r.person_a}-${r.person_b}`;
+      if (seenEdges.has(key)) return;
+      seenEdges.add(key);
+
+      if (r.relationship_type === 'parent_of') {
+        if (!childToParentsGlobal[r.person_b]) childToParentsGlobal[r.person_b] = [];
+        if (!childToParentsGlobal[r.person_b].includes(r.person_a)) childToParentsGlobal[r.person_b].push(r.person_a);
+        if (!parentToChildrenGlobal[r.person_a]) parentToChildrenGlobal[r.person_a] = [];
+        if (!parentToChildrenGlobal[r.person_a].includes(r.person_b)) parentToChildrenGlobal[r.person_a].push(r.person_b);
+        edges.push({ data: { id: key, source: r.person_a, target: r.person_b, relType: 'parent_of' } });
+      } else {
+        // spouse, co_parent, partner
+        if (!partnersGlobal[r.person_a]) partnersGlobal[r.person_a] = [];
+        if (!partnersGlobal[r.person_a].includes(r.person_b)) partnersGlobal[r.person_a].push(r.person_b);
+        if (!partnersGlobal[r.person_b]) partnersGlobal[r.person_b] = [];
+        if (!partnersGlobal[r.person_b].includes(r.person_a)) partnersGlobal[r.person_b].push(r.person_a);
+        edges.push({ data: { id: key, source: r.person_a, target: r.person_b, relType: r.relationship_type } });
+      }
     });
 
     const connectedIds = new Set();
@@ -584,19 +341,10 @@ async function init() {
         data: {
           id: p.id,
           label: p.name.length > 16 ? p.name.slice(0, 14) + '…' : p.name,
-          sublabel: p.relation,
           fullData: p,
           isYou: p.relation === 'You' ? true : undefined
         }
       }));
-
-    const edges = relationships.map(r => ({
-      data: {
-        id: `${r.person_a}-${r.person_b}`,
-        source: r.person_a,
-        target: r.person_b
-      }
-    }));
 
     cytoscapeDagre(cytoscape);
 
@@ -667,7 +415,7 @@ async function init() {
           }
         },
         {
-          selector: 'edge',
+          selector: 'edge[relType = "parent_of"]',
           style: {
             'width': 1.5,
             'line-color': 'rgba(201,168,76,0.4)',
@@ -678,9 +426,20 @@ async function init() {
           }
         },
         {
+          selector: 'edge[relType != "parent_of"]',
+          style: {
+            'width': 1.5,
+            'line-color': 'rgba(201,168,76,0.6)',
+            'line-style': 'dashed',
+            'line-dash-pattern': [6, 4],
+            'target-arrow-shape': 'none',
+            'curve-style': 'bezier',
+          }
+        },
+        {
           selector: 'edge:selected',
           style: {
-            'line-color': 'rgba(201,168,76,0.8)',
+            'line-color': 'rgba(201,168,76,0.9)',
             'width': 2,
           }
         }
@@ -690,6 +449,7 @@ async function init() {
         rankDir: 'TB',
         nodeSep: 40,
         rankSep: 120,
+        ranker: 'tight-tree',
         padding: 100,
         animate: true,
         animationDuration: 800,
@@ -702,13 +462,11 @@ async function init() {
     });
 
     cyInstance.on('tap', 'node', function(evt) {
-      const member = evt.target.data('fullData');
-      openPanel(member);
+      openPanel(evt.target.data('fullData'));
     });
 
     document.getElementById('panel-close').onclick = closePanel;
     document.getElementById('overlay').onclick = closePanel;
-
     document.getElementById('zoom-in').onclick = () => cyInstance.zoom({ level: cyInstance.zoom() * 1.3, renderedPosition: { x: window.innerWidth/2, y: window.innerHeight/2 } });
     document.getElementById('zoom-out').onclick = () => cyInstance.zoom({ level: cyInstance.zoom() * 0.77, renderedPosition: { x: window.innerWidth/2, y: window.innerHeight/2 } });
     document.getElementById('reset-view').onclick = () => cyInstance.fit(undefined, 80);
