@@ -473,63 +473,74 @@ let childToParentsGlobal = {};
 let parentToChildrenGlobal = {};
 let cyInstance = null;
 
+// STRICT relationship calculation — only uses parent_of chains, never co_parent/spouse/partner
+function getParents(personId) {
+  return childToParentsGlobal[personId] || [];
+}
+
+function getChildren(personId) {
+  return parentToChildrenGlobal[personId] || [];
+}
+
 function calculateRelationship(viewerId, targetId) {
   if (viewerId === targetId) return 'You';
 
-  const viewerParents = childToParentsGlobal[viewerId] || [];
-  const targetParents = childToParentsGlobal[targetId] || [];
-  const viewerChildren = parentToChildrenGlobal[viewerId] || [];
+  const viewerParents = getParents(viewerId);
+  const targetParents = getParents(targetId);
+  const viewerChildren = getChildren(viewerId);
 
+  // Parent — target is directly above viewer
   if (viewerParents.includes(targetId)) return 'Parent';
+
+  // Child — viewer is directly above target
   if (targetParents.includes(viewerId)) return 'Child';
 
-  const sharedParents = viewerParents.filter(p => targetParents.includes(p));
-  if (sharedParents.length > 0) return 'Sibling';
+  // Sibling — STRICT: both must have at least one identical parent via parent_of only
+  const sharedDirectParents = viewerParents.filter(p => targetParents.includes(p));
+  if (sharedDirectParents.length > 0) return 'Sibling';
 
+  // Grandparent — target is parent of viewer's parent
   for (const vp of viewerParents) {
-    const gpParents = childToParentsGlobal[vp] || [];
-    if (gpParents.includes(targetId)) return 'Grandparent';
+    if (getParents(vp).includes(targetId)) return 'Grandparent';
   }
 
+  // Grandchild — target's parent is viewer's child
   for (const vc of viewerChildren) {
-    const gcChildren = parentToChildrenGlobal[vc] || [];
-    if (gcChildren.includes(targetId)) return 'Grandchild';
+    if (getParents(targetId).includes(vc)) return 'Grandchild';
   }
 
+  // Great-Grandparent
   for (const vp of viewerParents) {
-    const vpParents = childToParentsGlobal[vp] || [];
+    for (const gp of getParents(vp)) {
+      if (getParents(gp).includes(targetId)) return 'Great-Grandparent';
+    }
+  }
+
+  // Aunt / Uncle — target is sibling of viewer's parent
+  for (const vp of viewerParents) {
+    const vpParents = getParents(vp);
     for (const gp of vpParents) {
-      const gpChildren = parentToChildrenGlobal[gp] || [];
+      const gpChildren = getChildren(gp);
       if (gpChildren.includes(targetId) && targetId !== vp) return 'Aunt / Uncle';
     }
   }
 
+  // Niece / Nephew — target's parent is sibling of viewer
   for (const vp of viewerParents) {
-    const vpChildren = parentToChildrenGlobal[vp] || [];
+    const vpChildren = getChildren(vp);
     for (const sib of vpChildren) {
       if (sib === viewerId) continue;
-      const sibChildren = parentToChildrenGlobal[sib] || [];
-      if (sibChildren.includes(targetId)) return 'Niece / Nephew';
+      if (getParents(targetId).includes(sib)) return 'Niece / Nephew';
     }
   }
 
+  // Cousin — target is child of viewer's aunt/uncle
   for (const vp of viewerParents) {
-    const vpParents = childToParentsGlobal[vp] || [];
-    for (const gp of vpParents) {
-      const gpChildren = parentToChildrenGlobal[gp] || [];
-      for (const auntUncle of gpChildren) {
+    for (const gp of getParents(vp)) {
+      for (const auntUncle of getChildren(gp)) {
         if (auntUncle === vp) continue;
-        const auChildren = parentToChildrenGlobal[auntUncle] || [];
-        if (auChildren.includes(targetId)) return 'Cousin';
+        if (getParents(targetId).includes(auntUncle)) return 'Cousin';
       }
-    }
-  }
-
-  for (const vp of viewerParents) {
-    const vpParents = childToParentsGlobal[vp] || [];
-    for (const gp of vpParents) {
-      const ggParents = childToParentsGlobal[gp] || [];
-      if (ggParents.includes(targetId)) return 'Great-Grandparent';
     }
   }
 
@@ -744,6 +755,7 @@ async function init() {
 
     people.forEach(p => personMapGlobal[p.id] = p);
 
+    // STRICT: only build parent maps from parent_of relationships
     relationships.forEach(r => {
       if (r.relationship_type !== 'parent_of') return;
       if (!childToParentsGlobal[r.person_b]) childToParentsGlobal[r.person_b] = [];
