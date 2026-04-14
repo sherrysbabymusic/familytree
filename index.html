@@ -473,7 +473,6 @@ let childToParentsGlobal = {};
 let parentToChildrenGlobal = {};
 let cyInstance = null;
 
-// STRICT relationship calculation — only uses parent_of chains, never co_parent/spouse/partner
 function getParents(personId) {
   return childToParentsGlobal[personId] || [];
 }
@@ -489,22 +488,22 @@ function calculateRelationship(viewerId, targetId) {
   const targetParents = getParents(targetId);
   const viewerChildren = getChildren(viewerId);
 
-  // Parent — target is directly above viewer
+  // Parent
   if (viewerParents.includes(targetId)) return 'Parent';
 
-  // Child — viewer is directly above target
+  // Child
   if (targetParents.includes(viewerId)) return 'Child';
 
-  // Sibling — STRICT: both must have at least one identical parent via parent_of only
+  // Sibling — strict direct parent match only
   const sharedDirectParents = viewerParents.filter(p => targetParents.includes(p));
   if (sharedDirectParents.length > 0) return 'Sibling';
 
-  // Grandparent — target is parent of viewer's parent
+  // Grandparent
   for (const vp of viewerParents) {
     if (getParents(vp).includes(targetId)) return 'Grandparent';
   }
 
-  // Grandchild — target's parent is viewer's child
+  // Grandchild
   for (const vc of viewerChildren) {
     if (getParents(targetId).includes(vc)) return 'Grandchild';
   }
@@ -516,16 +515,22 @@ function calculateRelationship(viewerId, targetId) {
     }
   }
 
-  // Aunt / Uncle — target is sibling of viewer's parent
+  // Great-Grandchild
+  for (const vc of viewerChildren) {
+    for (const gc of getChildren(vc)) {
+      if (getParents(targetId).includes(gc)) return 'Great-Grandchild';
+    }
+  }
+
+  // Aunt / Uncle
   for (const vp of viewerParents) {
-    const vpParents = getParents(vp);
-    for (const gp of vpParents) {
+    for (const gp of getParents(vp)) {
       const gpChildren = getChildren(gp);
       if (gpChildren.includes(targetId) && targetId !== vp) return 'Aunt / Uncle';
     }
   }
 
-  // Niece / Nephew — target's parent is sibling of viewer
+  // Niece / Nephew
   for (const vp of viewerParents) {
     const vpChildren = getChildren(vp);
     for (const sib of vpChildren) {
@@ -534,7 +539,7 @@ function calculateRelationship(viewerId, targetId) {
     }
   }
 
-  // Cousin — target is child of viewer's aunt/uncle
+  // Cousin
   for (const vp of viewerParents) {
     for (const gp of getParents(vp)) {
       for (const auntUncle of getChildren(gp)) {
@@ -544,7 +549,7 @@ function calculateRelationship(viewerId, targetId) {
     }
   }
 
-  return personMapGlobal[targetId]?.relation || 'Family';
+  return 'Family';
 }
 
 async function fetchData() {
@@ -755,7 +760,6 @@ async function init() {
 
     people.forEach(p => personMapGlobal[p.id] = p);
 
-    // STRICT: only build parent maps from parent_of relationships
     relationships.forEach(r => {
       if (r.relationship_type !== 'parent_of') return;
       if (!childToParentsGlobal[r.person_b]) childToParentsGlobal[r.person_b] = [];
