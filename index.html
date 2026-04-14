@@ -757,7 +757,19 @@ function openPanel(member) {
       const otherId = r.person_a === member.id ? r.person_b : r.person_a;
       const other = personMapGlobal[otherId];
       if (!other) return;
-      const label = r.relationship_type.replace(/_/g, ' ');
+      const relationshipLabels = {
+  spouse: "Spouse",
+  partner: "Partner",
+  parent: "Parent",
+  child: "Child",
+  sibling: "Sibling",
+  co_parent: "Co-Parent",
+  "co-parent": "Co-Parent"
+};
+
+const label =
+  relationshipLabels[r.relationship_type] ??
+  r.relationship_type.replace(/_/g, ' ');
       const li = document.createElement('li');
       li.className = 'relation-item';
       li.innerHTML = `
