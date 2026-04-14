@@ -498,12 +498,12 @@ function calculateRelationship(viewerId, targetId) {
   const sharedDirectParents = viewerParents.filter(p => targetParents.includes(p));
   if (sharedDirectParents.length > 0) return 'Sibling';
 
-  // Grandparent
+  // Grandparent — target is parent of viewer's parent
   for (const vp of viewerParents) {
     if (getParents(vp).includes(targetId)) return 'Grandparent';
   }
 
-  // Grandchild
+  // Grandchild — viewer is grandparent of target
   for (const vc of viewerChildren) {
     if (getParents(targetId).includes(vc)) return 'Grandchild';
   }
@@ -522,7 +522,25 @@ function calculateRelationship(viewerId, targetId) {
     }
   }
 
-  // Aunt / Uncle
+  // Great-Great-Grandparent
+  for (const vp of viewerParents) {
+    for (const gp of getParents(vp)) {
+      for (const ggp of getParents(gp)) {
+        if (getParents(ggp).includes(targetId)) return 'Great-Great-Grandparent';
+      }
+    }
+  }
+
+  // Great-Great-Grandchild
+  for (const vc of viewerChildren) {
+    for (const gc of getChildren(vc)) {
+      for (const ggc of getChildren(gc)) {
+        if (getParents(targetId).includes(ggc)) return 'Great-Great-Grandchild';
+      }
+    }
+  }
+
+  // Aunt / Uncle — target is sibling of viewer's parent
   for (const vp of viewerParents) {
     for (const gp of getParents(vp)) {
       const gpChildren = getChildren(gp);
@@ -530,7 +548,7 @@ function calculateRelationship(viewerId, targetId) {
     }
   }
 
-  // Niece / Nephew
+  // Niece / Nephew — target's parent is sibling of viewer
   for (const vp of viewerParents) {
     const vpChildren = getChildren(vp);
     for (const sib of vpChildren) {
@@ -539,12 +557,71 @@ function calculateRelationship(viewerId, targetId) {
     }
   }
 
-  // Cousin
+  // Great-Aunt / Great-Uncle — target is sibling of viewer's grandparent
+  for (const vp of viewerParents) {
+    for (const gp of getParents(vp)) {
+      for (const ggp of getParents(gp)) {
+        const ggpChildren = getChildren(ggp);
+        if (ggpChildren.includes(targetId) && targetId !== gp) return 'Great-Aunt / Great-Uncle';
+      }
+    }
+  }
+
+  // Great-Niece / Great-Nephew — viewer is sibling of target's grandparent
+  for (const vp of viewerParents) {
+    const vpChildren = getChildren(vp);
+    for (const sib of vpChildren) {
+      if (sib === viewerId) continue;
+      for (const sibChild of getChildren(sib)) {
+        if (getParents(targetId).includes(sibChild)) return 'Great-Niece / Great-Nephew';
+      }
+    }
+  }
+
+  // Cousin — target is child of viewer's aunt/uncle
   for (const vp of viewerParents) {
     for (const gp of getParents(vp)) {
       for (const auntUncle of getChildren(gp)) {
         if (auntUncle === vp) continue;
         if (getParents(targetId).includes(auntUncle)) return 'Cousin';
+      }
+    }
+  }
+
+  // Cousin Once Removed (up) — target is viewer's parent's cousin
+  for (const vp of viewerParents) {
+    for (const gp of getParents(vp)) {
+      for (const ggp of getParents(gp)) {
+        for (const auntUncle of getChildren(ggp)) {
+          if (auntUncle === gp) continue;
+          if (getParents(targetId).includes(auntUncle)) return 'Cousin Once Removed';
+        }
+      }
+    }
+  }
+
+  // Cousin Once Removed (down) — target is child of viewer's cousin
+  for (const vp of viewerParents) {
+    for (const gp of getParents(vp)) {
+      for (const auntUncle of getChildren(gp)) {
+        if (auntUncle === vp) continue;
+        for (const cousin of getChildren(auntUncle)) {
+          if (getParents(targetId).includes(cousin)) return 'Cousin Once Removed';
+        }
+      }
+    }
+  }
+
+  // Second Cousin — target is child of viewer's parent's cousin
+  for (const vp of viewerParents) {
+    for (const gp of getParents(vp)) {
+      for (const ggp of getParents(gp)) {
+        for (const auntUncle of getChildren(ggp)) {
+          if (auntUncle === gp) continue;
+          for (const parentCousin of getChildren(auntUncle)) {
+            if (getParents(targetId).includes(parentCousin)) return 'Second Cousin';
+          }
+        }
       }
     }
   }
