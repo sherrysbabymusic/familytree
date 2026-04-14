@@ -480,9 +480,29 @@ function getParents(personId) {
 function getChildren(personId) {
   return parentToChildrenGlobal[personId] || [];
 }
+function getDirectCoupleRelationship(viewerId, targetId) {
+  const rel = relationshipsData.find(r =>
+    (r.person_a === viewerId && r.person_b === targetId) ||
+    (r.person_b === viewerId && r.person_a === targetId)
+  );
 
+  if (!rel) return null;
+
+  const map = {
+    spouse: "Spouse",
+    partner: "Partner",
+    co_parent: "Co-Parent",
+    "co-parent": "Co-Parent"
+  };
+
+  return map[rel.relationship_type] || null;
+}
+  
 function calculateRelationship(viewerId, targetId) {
   if (viewerId === targetId) return 'You';
+// ✅ Spouse / Partner / Co-Parent takes priority
+  const coupleRole = getDirectCoupleRelationship(viewerId, targetId);
+  if (coupleRole) return coupleRole;
 
   const viewerParents = getParents(viewerId);
   const targetParents = getParents(targetId);
