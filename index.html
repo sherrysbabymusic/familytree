@@ -31,7 +31,6 @@
     overflow: hidden;
   }
 
-  /* VIEWER OVERLAY */
   .viewer-overlay {
     position: fixed;
     inset: 0;
@@ -474,38 +473,29 @@ let childToParentsGlobal = {};
 let parentToChildrenGlobal = {};
 let cyInstance = null;
 
-// Relationship calculation from viewer's perspective
 function calculateRelationship(viewerId, targetId) {
   if (viewerId === targetId) return 'You';
 
   const viewerParents = childToParentsGlobal[viewerId] || [];
   const targetParents = childToParentsGlobal[targetId] || [];
   const viewerChildren = parentToChildrenGlobal[viewerId] || [];
-  const targetChildren = parentToChildrenGlobal[targetId] || [];
 
-  // Parent
   if (viewerParents.includes(targetId)) return 'Parent';
-
-  // Child
   if (targetParents.includes(viewerId)) return 'Child';
 
-  // Sibling — shares at least one parent
   const sharedParents = viewerParents.filter(p => targetParents.includes(p));
   if (sharedParents.length > 0) return 'Sibling';
 
-  // Grandparent — parent of parent
   for (const vp of viewerParents) {
     const gpParents = childToParentsGlobal[vp] || [];
     if (gpParents.includes(targetId)) return 'Grandparent';
   }
 
-  // Grandchild — child of child
   for (const vc of viewerChildren) {
     const gcChildren = parentToChildrenGlobal[vc] || [];
     if (gcChildren.includes(targetId)) return 'Grandchild';
   }
 
-  // Aunt/Uncle — parent's sibling
   for (const vp of viewerParents) {
     const vpParents = childToParentsGlobal[vp] || [];
     for (const gp of vpParents) {
@@ -514,7 +504,6 @@ function calculateRelationship(viewerId, targetId) {
     }
   }
 
-  // Niece/Nephew — sibling's child
   for (const vp of viewerParents) {
     const vpChildren = parentToChildrenGlobal[vp] || [];
     for (const sib of vpChildren) {
@@ -524,7 +513,6 @@ function calculateRelationship(viewerId, targetId) {
     }
   }
 
-  // Cousin — parent's sibling's child
   for (const vp of viewerParents) {
     const vpParents = childToParentsGlobal[vp] || [];
     for (const gp of vpParents) {
@@ -537,7 +525,6 @@ function calculateRelationship(viewerId, targetId) {
     }
   }
 
-  // Great-grandparent
   for (const vp of viewerParents) {
     const vpParents = childToParentsGlobal[vp] || [];
     for (const gp of vpParents) {
@@ -564,7 +551,6 @@ function openPanel(member) {
 
   document.getElementById('panel-name').textContent = member.name;
 
-  // Show relation from viewer's perspective
   let relationLabel = member.relation;
   if (currentViewerId) {
     relationLabel = calculateRelationship(currentViewerId, member.id);
@@ -577,6 +563,7 @@ function openPanel(member) {
   const body = document.getElementById('panel-body');
   body.innerHTML = '';
 
+  // Parents
   const parentIds = childToParentsGlobal[member.id] || [];
   if (parentIds.length > 0) {
     const section = document.createElement('div');
@@ -602,6 +589,7 @@ function openPanel(member) {
     body.appendChild(section);
   }
 
+  // Children
   const childIds = parentToChildrenGlobal[member.id] || [];
   if (childIds.length > 0) {
     const section = document.createElement('div');
@@ -627,6 +615,7 @@ function openPanel(member) {
     body.appendChild(section);
   }
 
+  // Siblings
   const siblings = [];
   parentIds.forEach(pid => {
     const sibIds = parentToChildrenGlobal[pid] || [];
@@ -660,6 +649,39 @@ function openPanel(member) {
     body.appendChild(section);
   }
 
+  // Spouse / Partner / Co-Parent
+  const coupleRels = relationshipsData.filter(r =>
+    ['spouse', 'partner', 'co_parent', 'spouses', 'partners', 'co_parents'].includes(r.relationship_type) &&
+    (r.person_a === member.id || r.person_b === member.id)
+  );
+
+  if (coupleRels.length > 0) {
+    const section = document.createElement('div');
+    section.className = 'panel-section';
+    section.innerHTML = `<div class="panel-section-title">Partner / Spouse</div><ul class="relation-list"></ul>`;
+    const list = section.querySelector('.relation-list');
+    coupleRels.forEach(r => {
+      const otherId = r.person_a === member.id ? r.person_b : r.person_a;
+      const other = personMapGlobal[otherId];
+      if (!other) return;
+      const label = r.relationship_type.replace(/_/g, ' ');
+      const li = document.createElement('li');
+      li.className = 'relation-item';
+      li.innerHTML = `
+        <div class="relation-dot"></div>
+        <div class="relation-item-content">
+          <div class="relation-item-name">${other.name}</div>
+          <div class="relation-item-role">${label}</div>
+        </div>
+        <div class="relation-arrow">›</div>
+      `;
+      li.onclick = () => { cyInstance.$(`node[id="${otherId}"]`).select(); openPanel(other); };
+      list.appendChild(li);
+    });
+    body.appendChild(section);
+  }
+
+  // Birthday
   const bday = formatBirthday(member.birthday);
   if (bday) {
     const section = document.createElement('div');
@@ -668,6 +690,7 @@ function openPanel(member) {
     body.appendChild(section);
   }
 
+  // Added By
   if (member.added_by) {
     const section = document.createElement('div');
     section.className = 'panel-section';
@@ -702,7 +725,6 @@ function initViewer(viewerPerson) {
   document.getElementById('viewer-name-display').textContent = currentViewerName;
   document.getElementById('viewer-overlay').classList.add('hidden');
 
-  // Update node labels on tree to show viewer perspective
   if (cyInstance && currentViewerId) {
     cyInstance.nodes().forEach(node => {
       const member = node.data('fullData');
@@ -881,7 +903,6 @@ async function init() {
     document.getElementById('member-count').textContent = `${nodes.length} Members`;
     setTimeout(() => document.getElementById('loading').classList.add('hidden'), 800);
 
-    // Viewer submit
     document.getElementById('viewer-submit').onclick = () => {
       const name = document.getElementById('viewer-name-input').value.trim().toLowerCase();
       const match = people.find(p => p.name.toLowerCase() === name);
